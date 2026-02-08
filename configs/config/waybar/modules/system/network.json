@@ -1,0 +1,13 @@
+{
+  "network#2": {
+    "format-wifi": "{icon}",
+    "format-ethernet": "NET ",
+    "format-disconnected": "<span color='#b4befe'>󰖪 </span>OFF",
+    "format-icons": ["󰤟", "󰤢", "󰤥", "󰤨"],
+    "max-length": 50,
+    "tooltip-format-wifi": "IP: {ipaddr}\n{essid} ({signalStrength}%)",
+    "on-click": "nm-applet",
+    "interval": 5
+  }
+}
+

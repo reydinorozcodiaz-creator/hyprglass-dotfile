@@ -1,0 +1,60 @@
+# General
+alias c="clear"
+alias q="exit"
+alias hd="hexdump -C"
+alias nanosu="sudo nano"
+alias vimsu="sudo vim"
+alias nvimsu="sudo nvim"
+alias clone="git clone --depth=1"
+alias paru-clean='paru -Sc && paru -Rns $(pacman -Qdtq) && paru --clean'
+
+# System Maintenance
+alias pacrem="sudo pacman -Rcns"
+alias yayupd="yay -Sy"
+alias yayupg="yay -Syu"
+alias trimall="sudo fstrim -va"
+alias reflesh="sudo reflector --verbose --latest 5 --sort rate --save /etc/pacman.d/mirrorlist"
+
+# Package Management (Pacman)
+alias pcs="sudo pacman -S"
+alias pcsy="sudo pacman -Sy"
+alias pcr="sudo pacman -R"
+alias pcrs="sudo pacman -Rs"
+alias pcsyu="sudo pacman -Syu"
+alias grub-update="sudo grub-mkconfig -o /boot/grub/grub.cfg"
+alias mantenimiento="yay -Sc && sudo pacman -Scc"
+alias purga="sudo pacman -Rns \$(pacman -Qtdq) && sudo fstrim -av"
+alias delete="sudo pacman -Rns"
+
+# Shortcuts
+alias zshconfig="nvim ~/.zshrc"
+alias ohmyzsh="thunar ~/.oh-my-zsh"
+alias flutter-light='
+  export _JAVA_OPTIONS="-Xmx1024m" &&
+  export ANDROID_SDK_ROOT=$HOME/Android/Sdk &&
+  export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH &&
+  export PUB_CACHE=/tmp/.pub-cache &&
+  export PUB_ENVIRONMENT="flutter_cli:no_concurrent_workers" &&
+  echo "✅ Flutter optimizado activado: RAM limitada y procesos ajustados." &&
+  flutter "$@"'
+
+alias recursive="rsync -av --delete"
+# LS ALIASES
+alias ls='eza --icons --group-directories-first'
+alias l='eza -lh --icons --group-directories-first'
+alias la='eza -a --icons --group-directories-first'
+alias ll='eza -lha --icons --group-directories-first'
+alias lt='eza --tree --icons --group-directories-first'
+alias lg='eza -l --icons --group-directories-first --git'
+alias lm='eza -lh --icons --group-directories-first --sort=modified'
+alias lS='eza -lh --icons --group-directories-first --sort=size'
+alias lC='eza -lh --icons --group-directories-first --sort=created'
+
+
+
+alias cat='bat'
+alias catn='/bin/cat'
+alias catnl='bat --paging=never'
+
+alias sendvps='rsync -avz -e "ssh -i ~/.ssh/vps -p 49221"'
+

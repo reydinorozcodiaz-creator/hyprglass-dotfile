@@ -1,0 +1,8 @@
+{
+  "custom/screenshot_clipboard": {
+    "format": "󰭪",
+    "tooltip": false,
+    "on-click-right": "~/.config/waybar/scripts/screenshot_clipboard.sh --area",
+    "on-click": "~/.config/waybar/scripts/screenshot_clipboard.sh --area"
+  }
+}

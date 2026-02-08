@@ -1,0 +1,9 @@
+{
+  "include": [
+    "~/.config/waybar/modules/custom/launcher.json",
+    "~/.config/waybar/modules/custom/notification.json",
+    "~/.config/waybar/modules/custom/screenshot_clipboard.json",
+    "~/.config/waybar/modules/custom/pacman.json",
+    "~/.config/waybar/modules/custom/powermenu.json"
+  ]
+}

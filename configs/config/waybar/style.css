@@ -1,0 +1,284 @@
+/* =====================================================
+ * WAYBAR CONFIGURATION STYLES
+ * ===================================================== */
+
+/* -----------------------------------------------------
+ * GLOBAL STYLES
+ * ----------------------------------------------------- */
+* {
+  font-size: 16px;
+  font-family: "FiraCode Nerd Font", "FontAwesome",
+    "Material Design Icons Desktop";
+  font-weight: bold;
+  padding: 1.5px;
+}
+
+.modules-left,
+.modules-right,
+.modules-center {
+  margin-top: -8px;
+  margin-bottom: -20px;
+  padding: 6px 4px 13px;
+  border-radius: 6px;
+}
+
+/* Main waybar window */
+window#waybar {
+  background-color: transparent;
+  border-bottom: 0px solid #ffffff;
+  transition-property: background-color;
+  transition-duration: 0.5s;
+}
+
+/* Tooltip styles */
+tooltip {
+  color: #a6a192;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+/* -----------------------------------------------------
+ * COMMON BACKGROUND STYLES
+ * ----------------------------------------------------- */
+tooltip,
+#custom-notification,
+#clock,
+#disk,
+#window,
+#bluetooth,
+#custom-bluetooth,
+#pulseaudio,
+#backlight,
+#memory,
+#cpu,
+#temperature,
+#battery,
+#network,
+#tray,
+#custom-pacman,
+#custom-launcher,
+#custom-screenshot_clipboard,
+#custom-powermenu {
+  background: rgba(0, 0, 0, 0.589);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  padding: 0 10px;
+  margin: 5px 0 6px 0;
+  font-size: 17px;
+}
+
+/* -----------------------------------------------------
+ * WORKSPACES
+ * ----------------------------------------------------- */
+#workspaces {
+  background: rgba(0, 0, 0, 0.589);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  margin: 6px 0px 8px 0px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 0px;
+  font-weight: bold;
+  font-style: normal;
+
+  color: #f700ff;
+  transition: all 0.3s ease-in-out;
+}
+
+#workspaces button {
+  margin: 5px 3px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  border: 0px;
+  color: black;
+  background-color: #fdf6e3;
+  transition: all 0.3s ease-in-out;
+  opacity: 0.4;
+}
+
+#workspaces button.active {
+  color: #fdf6e3;
+  background: #1e58a5;
+  border-radius: 15px;
+  min-width: 40px;
+  transition: all 0.3s ease-in-out;
+  opacity: 1;
+}
+
+#workspaces button:hover {
+  color: black;
+  background: #11aaeb;
+  border-radius: 15px;
+  opacity: 0.7;
+}
+
+/* -----------------------------------------------------
+ * SYSTEM INFORMATION WIDGETS
+ * ----------------------------------------------------- */
+
+/* CPU */
+#cpu {
+  color: #f700ff;
+
+  /* Tamaño personalizado para CPU */
+}
+
+/* Memory */
+#memory {
+  border-radius: 12px 0 0 12px;
+  color: #15d056;
+  /* Tamaño personalizado para memoria */
+}
+
+/* Temperature */
+#temperature {
+  color: #0061ff;
+  /* Tamaño más pequeño para temperatura */
+}
+
+/* Disk */
+#disk {
+  color: #b58900;
+  border-radius: 0px 12px 12px 0px;
+}
+
+/* Hyprland Window */
+#window {
+  margin-left: 10px;
+  color: #a6a192;
+  font-size: 15px;
+  font-weight: normal;
+}
+
+/* Battery */
+#battery {
+  color: #aeff00;
+  border-radius: 0;
+  /* Tamaño más grande para batería */
+}
+
+/* -----------------------------------------------------
+ * AUDIO & DISPLAY WIDGETS
+ * ----------------------------------------------------- */
+
+/* Audio */
+#pulseaudio {
+  color: #009eff;
+  /* Tamaño personalizado para audio */
+}
+
+/* Backlight */
+#backlight {
+  color: #b58900;
+  /* Tamaño personalizado para brillo */
+}
+
+/* -----------------------------------------------------
+ * NETWORK & CONNECTIVITY
+ * ----------------------------------------------------- */
+
+/* Network */
+#network {
+  border-radius: 0;
+  color: #0061ff;
+  /* Tamaño personalizado para red */
+}
+
+/* Bluetooth */
+#custom-bluetooth {
+  color: #15d056;
+  /* Tamaño personalizado para Bluetooth */
+}
+
+/* -----------------------------------------------------
+ * TIME & DATE
+ * ----------------------------------------------------- */
+
+/* Clock */
+#clock {
+  color: #f1aa40;
+  border-radius: 0 12px 12px 0;
+  /* Tamaño más grande para el reloj */
+}
+
+/* -----------------------------------------------------
+ * CUSTOM WIDGETS
+ * ----------------------------------------------------- */
+
+/* Launcher */
+#custom-launcher {
+  border-radius: 12px;
+  color: #0061ff;
+}
+
+/* Power menu */
+#custom-powermenu {
+  color: red;
+  border-radius: 12px;
+}
+
+/* Package manager updates */
+#custom-pacman {
+  color: #e1e410;
+  border-radius: 0 12px 12px 0;
+  /* Tamaño personalizado para pacman */
+}
+
+/* Notifications */
+#custom-notification {
+  color: rgb(182, 25, 25);
+  border-radius:  0;
+}
+
+/* Dark theme elements */
+#custom-right-dark,
+#custom-left-dark {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+/* -----------------------------------------------------
+ * SYSTEM TRAY
+ * ----------------------------------------------------- */
+#tray {
+  border-radius: 12px;
+}
+#custom-screenshot_clipboard{
+  border-radius: 12px 0px 0 12px;
+}
+
+/* =====================================================
+ * HOVER EFFECTS & INTERACTIONS
+ * ===================================================== */
+
+/* Hover effects for interactive modules */
+#clock:hover,
+#network:hover,
+#pulseaudio:hover,
+#disk:hover,
+#window:hover,
+#custom-launcher:hover,
+#custom-notification:hover,
+#custom-screenshot_clipboard:hover,
+#custom-powermenu:hover,
+#bluetooth:hover,
+#custom-bluetooth:hover {
+  opacity: 0.8;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* =====================================================
+ * BATTERY STATUS ANIMATIONS
+ * ===================================================== */
+
+/* Battery warning state */
+#battery.warning {
+  color: #ff9900;
+  animation: pulse-warning 1.5s infinite;
+}
+
+/* Battery critical state */
+#battery.critical {
+  color: #ff0000;
+  animation: pulse-critical 0.8s infinite;
+}
+
+

@@ -1,0 +1,120 @@
+# Core Hyprland & Wayland
+hyprland
+hypridle
+hyprlock
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+qt5-wayland
+qt6-wayland
+polkit-gnome
+hyprpicker 
+
+# Terminal & Shell
+kitty
+zsh
+btop
+fastfetch
+curl
+wget
+git
+bat
+exa
+ripgrep
+fd
+
+# Bar, Launcher, Notifications
+waybar
+rofi-wayland
+fuzzel
+dunst
+swaync
+
+# Utilities (System)
+udiskie
+gnome-keyring
+geoclue
+xsettingsd
+cbatticon
+brightnessctl
+libnotify
+pamixer
+pavucontrol
+playerctl
+network-manager-applet
+bluez
+bluez-utils
+blueman
+gvfs
+gvfs-mtp
+jq
+imagemagick
+ffmpeg
+pacman-contrib
+zip
+unzip
+7zip
+rsync
+plocate
+
+# Audio (Pipewire)
+pipewire
+pipewire-alsa
+pipewire-pulse
+pipewire-jack
+wireplumber
+
+# File Management
+nautilus
+thunar
+thunar-volman
+thunar-archive-plugin
+tumbler
+file-roller
+ntfs-3g
+
+# Utilities (User)
+firefox
+neovim
+mpv
+viewnior
+discord
+obs-studio
+
+# Gaming
+steam
+gamemode
+lib32-gamemode
+mangohud
+gamescope
+wine
+winetricks
+lutris
+
+# Theming & Visuals
+swww
+python-pywal
+nwg-look
+qt5ct
+qt6ct
+kvantum
+ttf-jetbrains-mono-nerd
+ttf-cascadia-code-nerd
+ttf-font-awesome-4
+ttf-material-icons
+ttf-firacode-nerd
+noto-fonts
+noto-fonts-emoji
+
+# Screenshot & Clipboard
+grim
+slurp
+wl-clipboard
+swappy
+# grimblast-git (AUR) - Required for screenshot scripts
+
+# Display Manager
+sddm
+# sddm-astronaut-theme (See scripts/install_sddm.sh)
+
+# AUR Helper (Optional)
+#yay

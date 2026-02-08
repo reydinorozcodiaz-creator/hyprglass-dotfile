@@ -1,0 +1,21 @@
+{
+  "memory": {
+    "interval": 4,
+    "format": " {}%",
+    "on-click": "kitty --class Floater -e btop "
+  },
+  "cpu": {
+    "interval": 2,
+    "format": " {usage:2}% ",
+    "on-click": "kitty --class Floater -e watch cpupower frequency-info"
+  },
+  "temperature": {
+  "interval": 3,
+  "critical-threshold": 80,
+  "format": "{icon} {temperatureC}°C",
+  "format-icons": ["", "", "", "", ""],
+  "on-click": "psensor --window"
+}
+
+
+}

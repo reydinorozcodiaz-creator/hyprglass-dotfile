@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+exec "$(dirname "$0")/tools/screenshot/window.sh"
