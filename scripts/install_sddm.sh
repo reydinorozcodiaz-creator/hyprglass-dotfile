@@ -45,6 +45,6 @@ echo "Deploying SDDM configuration..."
 sudo cp "$REPO_ROOT/configs/system/sddm/sddm.conf" /etc/sddm.conf
 
 echo "Enabling SDDM service..."
-sudo systemctl enable sddm
+sudo systemctl enable sddm --force
 
 echo "SDDM setup complete! Reboot to see changes."

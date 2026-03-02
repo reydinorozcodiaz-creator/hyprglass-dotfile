@@ -8,10 +8,10 @@ set -euo pipefail
 # Configuration
 Script_Wall=$(basename "$0")
 LOG_FILE="$HOME/.config/hypr/logs/aleatory-wall.log"
-QUEUE_FILE="$HOME/.config/hypr/.wallpaper-queue"
-QUEUE_LOCK_FILE="$HOME/.config/hypr/.wallpaper-queue.lock"
-LOCK_WALLPAPER_LINK="$HOME/.config/hypr/.lock-wallpaper"
-LOCK_WALLPAPER_STILL="$HOME/.config/hypr/.lock-wallpaper.png"
+QUEUE_FILE="$HOME/.config/hypr/logs/.wallpaper-queue"
+QUEUE_LOCK_FILE="$HOME/.config/hypr/logs/.wallpaper-queue.lock"
+LOCK_WALLPAPER_LINK="$HOME/.config/hypr/logs/.lock-wallpaper"
+LOCK_WALLPAPER_STILL="$HOME/.config/hypr/logs/.lock-wallpaper.png"
 BACKEND=${BACKEND:-swww} # swww | mpvpaper
 OUTPUT=${OUTPUT:-all}    # all | eDP-1 | DP-1 ...
 # mpv defaults tuned for a wallpaper use-case (lower CPU/RAM while keeping smooth playback).
@@ -84,9 +84,9 @@ ensure_queue() {
         printf '%s\n' "${WALL[@]}" | shuf > "$QUEUE_FILE" || true
 
         # Avoid immediate repeat of current wallpaper when starting a new cycle.
-        if [[ -f "$HOME/.config/hypr/.current-wallpaper" ]]; then
+        if [[ -f "$HOME/.config/hypr/logs/.current-wallpaper" ]]; then
             local current
-            current=$(cat "$HOME/.config/hypr/.current-wallpaper" 2>/dev/null || true)
+            current=$(cat "$HOME/.config/hypr/logs/.current-wallpaper" 2>/dev/null || true)
             if [[ -n "$current" ]]; then
                 local first
                 first=$(head -n 1 "$QUEUE_FILE" 2>/dev/null || true)
@@ -463,6 +463,42 @@ start_dunst_if_enabled() {
     fi
 }
 
+update_quickshell_state() {
+    local wallpaper="$1"
+    local state_file="$HOME/.config/quickshell/state.json"
+    
+    debug "Updating quickshell state.json with new wallpaper"
+    
+    if [[ ! -f "$state_file" ]]; then
+        debug "state.json not found, skipping quickshell update"
+        return 0
+    fi
+    
+    # Use jq if available, otherwise use python
+    if command -v jq >/dev/null 2>&1; then
+        local tmp_file="${state_file}.tmp"
+        jq --arg wp "$wallpaper" '.wallpaper.current = $wp' "$state_file" > "$tmp_file" 2>/dev/null && mv "$tmp_file" "$state_file"
+        debug "Quickshell state updated with jq"
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 <<-EOF 2>/dev/null
+import json
+try:
+    with open("$state_file", "r") as f:
+        data = json.load(f)
+    if "wallpaper" not in data:
+        data["wallpaper"] = {}
+    data["wallpaper"]["current"] = "$wallpaper"
+    with open("$state_file", "w") as f:
+        json.dump(data, f, indent=2)
+except Exception as e:
+    pass
+EOF
+        debug "Quickshell state updated with python"
+    else
+        debug "Neither jq nor python3 available, skipping quickshell update"
+    fi
+}
+
 apply_wallpaper() {
     local wallpaper="$1"
     local wallpaper_name
@@ -519,7 +555,8 @@ apply_wallpaper() {
     fi
 
     success "Wallpaper changed to: $wallpaper_name"
-    echo "$wallpaper" > "$HOME/.config/hypr/.current-wallpaper" 2>/dev/null || true
+    echo "$wallpaper" > "$HOME/.config/hypr/logs/.current-wallpaper" 2>/dev/null || true
+    update_quickshell_state "$wallpaper"
     update_lock_wallpaper "$wallpaper"
 }
 

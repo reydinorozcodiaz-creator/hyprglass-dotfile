@@ -1,0 +1,2 @@
+alsa-utils wtype libnotify base-devel cmake
+whisper.cpp

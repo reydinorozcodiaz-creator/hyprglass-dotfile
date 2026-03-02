@@ -8,7 +8,8 @@ qt5-wayland
 qt6-wayland
 polkit-gnome
 hyprpicker 
-
+qt5-wayland
+qt6-wayland
 # Terminal & Shell
 kitty
 zsh
@@ -21,6 +22,8 @@ bat
 exa
 ripgrep
 fd
+matugen
+cliphist
 
 # Bar, Launcher, Notifications
 waybar
@@ -57,11 +60,7 @@ rsync
 plocate
 
 # Audio (Pipewire)
-pipewire
-pipewire-alsa
-pipewire-pulse
-pipewire-jack
-wireplumber
+
 
 # File Management
 nautilus
@@ -104,6 +103,7 @@ ttf-material-icons
 ttf-firacode-nerd
 noto-fonts
 noto-fonts-emoji
+sans-serif
 
 # Screenshot & Clipboard
 grim

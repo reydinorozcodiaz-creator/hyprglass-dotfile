@@ -237,7 +237,8 @@ create_qt_configs() {
     # Create Qt5ct config directory
     mkdir -p "$QT5CT_CONFIG"
     
-    # Create Qt5ct config
+    # Only create Qt5ct config if it doesn't already exist (preserve user customizations)
+    if [[ ! -f "$QT5CT_CONFIG/qt5ct.conf" ]]; then
     cat > "$QT5CT_CONFIG/qt5ct.conf" << EOF
 [Appearance]
 color_scheme_path=
@@ -247,8 +248,9 @@ standard_dialogs=gtk3
 style=$qt_style
 
 [Fonts]
-fixed=@Variant(\0\0\0@\0\0\0\x12\0M\0o\0n\0o\0s\0p\0\x61\0\x63\0\x65@\"\0\0\0\0\0\0\xff\xff\xff\xff\x5\x1\0\x32\x10)
-general=@Variant(\0\0\0@\0\0\0\x16\0\x43\0\x61\0n\0t\0\x61\0r\0\x65\0l\0l@\"\0\0\0\0\0\0\xff\xff\xff\xff\x5\x1\0\x32\x10)
+fixed=Noto Sans Mono,10,-1,5,50,0,0,0,0,0
+general=Noto Sans,10,-1,5,50,0,0,0,0,0
+
 
 [Interface]
 activate_item_on_single_click=1
@@ -272,11 +274,16 @@ geometry=@ByteArray()
 force_raster_widgets=1
 ignored_applications=@Invalid()
 EOF
+        echo -e "${GREEN}  ✅ Qt5ct config created${NC}"
+    else
+        echo -e "${YELLOW}  ⏭️  Qt5ct config already exists, skipping (use 'reset' to regenerate)${NC}"
+    fi
     
     # Create Qt6ct config directory
     mkdir -p "$QT6CT_CONFIG"
     
-    # Create Qt6ct config (similar to Qt5ct)
+    # Only create Qt6ct config if it doesn't already exist (preserve user customizations)
+    if [[ ! -f "$QT6CT_CONFIG/qt6ct.conf" ]]; then
     cat > "$QT6CT_CONFIG/qt6ct.conf" << EOF
 [Appearance]
 color_scheme_path=
@@ -286,8 +293,9 @@ standard_dialogs=gtk3
 style=$qt_style
 
 [Fonts]
-fixed=@Variant(\0\0\0@\0\0\0\x12\0M\0o\0n\0o\0s\0p\0\x61\0\x63\0\x65@\"\0\0\0\0\0\0\xff\xff\xff\xff\x5\x1\0\x32\x10)
-general=@Variant(\0\0\0@\0\0\0\x16\0\x43\0\x61\0n\0t\0\x61\0r\0\x65\0l\0l@\"\0\0\0\0\0\0\xff\xff\xff\xff\x5\x1\0\x32\x10)
+fixed=Noto Sans Mono,10,-1,5,50,0,0,0,0,0
+general=Noto Sans,10,-1,5,50,0,0,0,0,0
+
 
 [Interface]
 activate_item_on_single_click=1
@@ -311,6 +319,10 @@ geometry=@ByteArray()
 force_raster_widgets=1
 ignored_applications=@Invalid()
 EOF
+        echo -e "${GREEN}  ✅ Qt6ct config created${NC}"
+    else
+        echo -e "${YELLOW}  ⏭️  Qt6ct config already exists, skipping (use 'reset' to regenerate)${NC}"
+    fi
     
     echo -e "${GREEN}✅ Qt configuration files created${NC}"
 }
