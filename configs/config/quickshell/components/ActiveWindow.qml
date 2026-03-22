@@ -9,34 +9,27 @@ Item {
     id: root
 
     property int maxWidth: 400
+    readonly property string rawWindowTitle: Hyprland.activeToplevel?.title ?? ""
+    property string windowTitle: ""
+    readonly property bool windowExists: windowTitle !== ""
 
-    // Internal state to force clearing
-    property bool windowExists: Hyprland.activeToplevel !== null
-
-    readonly property string windowTitle: Hyprland.activeToplevel?.title ?? ""
-
-    // Logic to verify focus changes
-    Connections {
-        target: Hyprland
-        function onRawEvent(event) {
-            // "activewindowv2" is sent even when clicking the desktop (returns empty)
-            if (event.name === "activewindowv2") {
-                // If the address is empty, no window is focused
-                root.windowExists = event.data !== "," && event.data !== "";
-            }
-
-            // Clear title when changing workspaces to an empty one
-            if (event.name === "workspace") {
-                // Small delay to let Hyprland update its internal state
-                Qt.callLater(() => {
-                    if (root)
-                        root.windowExists = Hyprland.activeToplevel !== null;
-                });
-            }
-        }
+    function sanitizeWindowTitle(title) {
+        return (title || "")
+            .replace(/[\u0000-\u001f\u007f]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
     }
 
-    implicitWidth: windowExists ? content.implicitWidth : 0
+    function syncWindowTitle() {
+        const nextTitle = sanitizeWindowTitle(rawWindowTitle);
+        if (windowTitle !== nextTitle)
+            windowTitle = nextTitle;
+    }
+
+    onRawWindowTitleChanged: titleSyncTimer.restart()
+    Component.onCompleted: syncWindowTitle()
+
+    implicitWidth: windowExists ? Math.min(titleText.implicitWidth + (Config.padding * 2), maxWidth) : 0
     implicitHeight: content.implicitHeight
 
     visible: opacity > 0
@@ -47,33 +40,38 @@ Item {
             duration: Config.animDuration
         }
     }
-    Behavior on implicitWidth {
-        NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutCubic
-        }
+    Timer {
+        id: titleSyncTimer
+        interval: 120
+        repeat: false
+        onTriggered: root.syncWindowTitle()
     }
 
     Rectangle {
         id: content
         anchors.fill: parent
-        implicitWidth: Math.min(titleText.implicitWidth + (Config.padding * 2), root.maxWidth)
         implicitHeight: titleText.implicitHeight + (Config.padding * 1.2)
         radius: Config.radius
+        clip: true
         color: Qt.alpha(Config.surface2Color, 0.7)
         border.width: 1
         border.color: Qt.alpha(Config.textColor, 0.12)
 
         Text {
             id: titleText
-            anchors.centerIn: parent
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: Config.padding
+            anchors.rightMargin: Config.padding
+            anchors.verticalCenter: parent.verticalCenter
             text: root.windowTitle !== "" ? "  " + root.windowTitle : ""
             color: Config.textColor
             font.family: Config.font
             font.pixelSize: Config.fontSizeLarge
             font.bold: true
             elide: Text.ElideRight
-            width: Math.min(implicitWidth, root.maxWidth - (Config.padding * 2))
+            horizontalAlignment: Text.AlignLeft
+            verticalAlignment: Text.AlignVCenter
         }
     }
 }

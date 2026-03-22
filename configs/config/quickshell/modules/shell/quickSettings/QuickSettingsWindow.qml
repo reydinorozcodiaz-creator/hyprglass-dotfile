@@ -22,7 +22,8 @@ QsPopupWindow {
         nightLightLoader,
         themeLoader,
         dndLoader,
-        audioLoader
+        audioLoader,
+        performanceLoader
     ]
     contentImplicitHeight: pageLoaders[pageStack.currentIndex]?.item?.implicitHeight ?? popupMaxHeight - 32
 
@@ -35,6 +36,7 @@ QsPopupWindow {
     readonly property int pageTheme: 5
     readonly property int pageDnd: 6
     readonly property int pageAudio: 7
+    readonly property int pagePerformance: 8
 
     Component.onCompleted: {
         root.visible = false;
@@ -142,6 +144,17 @@ QsPopupWindow {
             id: audioLoader
             active: root.visible && pageStack.currentIndex === root.pageAudio
             sourceComponent: AudioPage {
+                onBackRequested: pageStack.currentIndex = root.pageDashboard
+            }
+        }
+
+        // ==========================
+        // PAGE 8: PERFORMANCE
+        // ==========================
+        Loader {
+            id: performanceLoader
+            active: root.visible && pageStack.currentIndex === root.pagePerformance
+            sourceComponent: PerformancePage {
                 onBackRequested: pageStack.currentIndex = root.pageDashboard
             }
         }

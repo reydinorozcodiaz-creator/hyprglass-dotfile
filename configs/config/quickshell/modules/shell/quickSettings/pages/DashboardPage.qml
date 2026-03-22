@@ -17,6 +17,8 @@ Item {
     Layout.fillWidth: true
     implicitHeight: main.implicitHeight
 
+    Component.onCompleted: PerformanceProfileService.refresh()
+
     ColumnLayout {
         id: main
         anchors.top: parent.top
@@ -186,6 +188,16 @@ Item {
                 hasDetails: true
                 onToggled: BrightnessService.toggleNightLight()
                 onOpenDetails: root.navigateTo(4)  // pageNightLight
+            }
+
+            QuickSettingsTile {
+                icon: PerformanceProfileService.systemIcon
+                label: "Performance"
+                subLabel: PerformanceProfileService.modeLabel
+                active: PerformanceProfileService.isPerformanceBiased
+                hasDetails: true
+                onToggled: root.navigateTo(8)  // pagePerformance
+                onOpenDetails: root.navigateTo(8)  // pagePerformance
             }
 
             // DND (Do Not Disturb)

@@ -39,6 +39,8 @@ geoclue
 xsettingsd
 cbatticon
 brightnessctl
+tuned
+tuned-ppd
 libnotify
 pamixer
 pavucontrol

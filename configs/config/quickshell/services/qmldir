@@ -9,6 +9,7 @@ singleton MprisService system/MprisService.qml
 singleton NotificationService system/NotificationService.qml
 singleton BrightnessService system/BrightnessService.qml
 singleton PowerService system/PowerService.qml
+singleton PerformanceProfileService system/PerformanceProfileService.qml
 singleton StateService stores/StateService.qml
 singleton ShortcutService shell/ShortcutService.qml
 singleton LauncherService shell/LauncherService.qml

@@ -223,6 +223,37 @@ setup_grub() {
     fi
 }
 
+setup_power_management() {
+    step "Configuring Power Manager (tuned)"
+
+    if ! command -v systemctl &> /dev/null; then
+        warn "systemctl not found. Skipping tuned setup."
+        return
+    fi
+
+    if systemctl cat tuned.service &> /dev/null; then
+        log "Enabling tuned service..."
+        if sudo systemctl enable --now tuned; then
+            success "tuned service enabled and running."
+        else
+            warn "Could not enable tuned automatically. Run: sudo systemctl enable --now tuned"
+        fi
+    else
+        warn "tuned.service not found. Verify the tuned package is installed."
+    fi
+
+    if systemctl cat tuned-ppd.service &> /dev/null; then
+        log "Enabling optional tuned-ppd compatibility service..."
+        if sudo systemctl enable --now tuned-ppd; then
+            success "tuned-ppd compatibility service enabled."
+        else
+            warn "Could not enable tuned-ppd automatically. Optional command: sudo systemctl enable --now tuned-ppd"
+        fi
+    else
+        log "Optional tuned-ppd service not found. Skipping compatibility service."
+    fi
+}
+
 setup_misc() {
     step "Post-Install Tasks"
     if command -v fc-cache &> /dev/null; then
@@ -258,6 +289,7 @@ main() {
         1)
             type_text "Starting Full Installation..."
             install_deps
+            setup_power_management
             setup_zsh
             setup_configs
             setup_sddm
