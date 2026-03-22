@@ -4,3 +4,14 @@
 
 # Local state
 .cache/
+
+# Quickshell local runtime/state
+configs/config/quickshell/ai-cache.json
+configs/config/quickshell/ai-history.json
+configs/config/quickshell/state.json
+configs/config/quickshell/secrets.json
+configs/config/quickshell/data/cache/*.json
+configs/config/quickshell/data/state/*.json
+configs/config/quickshell/data/private/*.json
+configs/config/quickshell/**/__pycache__/
+configs/config/quickshell/**/*.pyc
