@@ -24,7 +24,6 @@ MPVPAPER_AUTO_PAUSE=${MPVPAPER_AUTO_PAUSE:-true}
 MPVPAPER_AUTO_STOP=${MPVPAPER_AUTO_STOP:-true}
 DEBUG=${DEBUG:-false}
 USE_PYWAL=false
-USE_DUNST=false
 
 # Wallpaper directories (in order of preference)
 WALL_DIRS=(
@@ -250,7 +249,7 @@ success "Found ${#WALL[@]} wallpaper(s) in $WALL_DIR"
 
 check_dependencies() {
     local required_deps=()
-    local optional_deps=("wal" "dunst")
+    local optional_deps=("wal")
     local missing_required=()
 
     if [[ "$BACKEND" == "mpvpaper" ]]; then
@@ -449,19 +448,6 @@ set_wallpaper_mpvpaper() {
     done
 }
 
-start_dunst_if_enabled() {
-    if [[ "$USE_DUNST" == "true" ]]; then
-        debug "Restarting dunst using launch_dunst.sh"
-        if [[ -x "$HOME/.config/dunst/launch_dunst.sh" ]]; then
-            pkill -x dunst
-            sleep 0.5
-            bash "$HOME/.config/dunst/launch_dunst.sh"
-            success "Dunst restarted with new colors"
-        else
-            error "launch_dunst.sh not found or not executable"
-        fi
-    fi
-}
 
 update_quickshell_state() {
     local wallpaper="$1"
@@ -549,10 +535,6 @@ apply_wallpaper() {
         debug "pywal not requested, skipping color generation"
     fi
 
-    if [[ "$USE_DUNST" == "true" ]]; then
-        debug "Launching dunst (post-pywal)"
-        start_dunst_if_enabled
-    fi
 
     success "Wallpaper changed to: $wallpaper_name"
     echo "$wallpaper" > "$HOME/.config/hypr/logs/.current-wallpaper" 2>/dev/null || true
@@ -578,42 +560,7 @@ cleanup() {
 
 trap cleanup SIGTERM SIGINT
 
-run_in_background() {
-    log "Starting AleatoryWall daemon"
-    log "Wallpaper directory: $WALL_DIR"
-    log "Change interval: 60 minutes"
 
-    load_wallpapers
-    [[ ${#WALL[@]} -eq 0 ]] && error "No wallpapers found. Exiting." && exit 1
-
-    last_mtime=$(stat -c %Y "$WALL_DIR")
-
-    change_wallpaper
-
-    trap 'log "Stopping AleatoryWall daemon"; exit' SIGINT SIGTERM
-
-    while true; do
-        debug "Sleeping for 60 minutes..."
-        sleep 3600
-
-        current_mtime=$(stat -c %Y "$WALL_DIR")
-        if [[ "$current_mtime" -ne "$last_mtime" ]]; then
-            debug "Directory modified, reloading wallpapers..."
-            load_wallpapers
-
-            # Reset queue so the new set of wallpapers is used without repeats.
-            rm -f "$QUEUE_FILE" 2>/dev/null || true
-
-            [[ ${#WALL[@]} -eq 0 ]] && error "No wallpapers found during re-scan" && continue
-            debug "Found ${#WALL[@]} wallpapers"
-            last_mtime=$current_mtime
-        else
-            debug "No wallpaper directory changes"
-        fi
-
-        change_wallpaper
-    done
-}
 
 main() {
     log "=== AleatoryWall Script Started ==="
@@ -657,14 +604,10 @@ main() {
                 log "pywal enabled via argument"
                 shift
                 ;;
-            --dunst|-d)
-                USE_DUNST=true
-                log "dunst enabled via argument"
-                shift
-                ;;
+
             --help|-h)
                 echo "AleatoryWall - Automatic wallpaper changer"
-                echo "Usage: $0 [--debug] [--once] [--file PATH_OR_NAME] [--backend swww|mpvpaper] [--output all|OUTPUT] [--mpv-options \"...\"] [--pywal|-p] [--dunst|-d] [--help]"
+                echo "Usage: $0 [--debug] [--once] [--file PATH_OR_NAME] [--backend swww|mpvpaper] [--output all|OUTPUT] [--mpv-options \"...\"] [--pywal|-p] [--help]"
                 echo "  --debug                 Enable debug output"
                 echo "  --once                  Change wallpaper once and exit"
                 echo "  --file PATH_OR_NAME      Force a specific wallpaper (absolute path or basename in the wallpaper dir)"
@@ -675,7 +618,6 @@ main() {
                 echo "  (mpvpaper scaling)        Uses MPV_FILL_MODE=cover|fit|stretch (default: cover)"
                 echo "  (mpvpaper defaults)      Uses MPVPAPER_AUTO_PAUSE=true and MPVPAPER_AUTO_STOP=true to reduce CPU/RAM when hidden"
                 echo "  --pywal|-p              Apply pywal color scheme after wallpaper change"
-                echo "  --dunst|-d              Start dunst (if not running)"
                 echo "  --help                  Show this help"
                 exit 0
                 ;;
@@ -715,24 +657,14 @@ main() {
     local other_pid=""
     other_pid=$(pgrep -f "${Script_Wall}" 2>/dev/null | awk -v me="$$" '$1 != me {print $1; exit}')
 
-    # If user asked for a single change, do it and exit (do not spawn daemon).
-    if [[ "$requested_once" == "true" ]]; then
-        log "Running in single-change mode"
-        change_wallpaper
-        exit 0
-    fi
-
-    # Default UX: if daemon already exists, just trigger one change.
     if [[ -n "$other_pid" ]]; then
-        log "Daemon already running (PID: $other_pid) — changing wallpaper once"
-        change_wallpaper
-        exit 0
+        log "Another instance is already running (PID: $other_pid) — changing wallpaper once"
+    else
+        log "Running AleatoryWall.sh in single-change mode"
     fi
 
-    run_in_background &
-    disown
-
-    log "AleatoryWall daemon started in background"
+    change_wallpaper
+    exit 0
 }
 
 main "$@"

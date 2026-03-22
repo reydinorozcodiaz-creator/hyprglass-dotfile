@@ -11,7 +11,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Configuration
-GTK_THEME="Sweet-Dark-v40"
+GTK_THEME="Sweet"
 ICON_THEME="BeautyLine"
 CURSOR_THEME="Sweet-cursors"
 CURSOR_SIZE="24"
@@ -174,7 +174,7 @@ write_hypr_env_conf() {
     if [[ -n "$style_override" ]]; then
         export QT_STYLE_OVERRIDE="$style_override"
     fi
-    export XCURSOR_THEME="$CURSOR_THEME"
+    export XCURSOR_THEME="Sweet-cursors"
     export XCURSOR_SIZE="$CURSOR_SIZE"
 }
 
@@ -370,7 +370,7 @@ apply_unified_theme() {
     write_hypr_env_conf
     
     # Don't force QT_STYLE_OVERRIDE here; let qt5ct/qt6ct (if installed) control style.
-    export GTK_THEME="$GTK_THEME"
+    export GTK_THEME="Sweet"
     
     echo
     echo -e "${GREEN}✅ Unified theme configuration applied!${NC}"

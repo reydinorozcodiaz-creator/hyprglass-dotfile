@@ -30,7 +30,7 @@ check_hyprland_health() {
         fi
         
         # Check essential components
-        for component in waybar rofi hypridle; do
+        for component in quickshell rofi hypridle; do
             if pgrep -x "$component" > /dev/null; then
                 echo "✅ $component: Running"
             else

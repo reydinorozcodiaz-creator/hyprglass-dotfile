@@ -1,0 +1,32 @@
+return {
+  -- Optional override for current-theme.txt.
+  theme = nil,
+
+  -- Point this to your Obsidian vault to enable notes integrations.
+  obsidian_path = "~/Documents/obsidian",
+
+  -- Toggle high-level features without editing plugin specs.
+  features = {
+    ai = true,
+    database = true,
+    debug = true,
+    notes = true,
+    ui_fx = true,
+    wakatime = true,
+  },
+
+  ai = {
+    chat_adapter = "anthropic",
+    inline_adapter = "copilot",
+    agent_adapter = "anthropic",
+    openai_model = "gpt-4o",
+    ollama_model = "llama3",
+    ollama_host = "127.0.0.1",
+    ollama_port = "11434",
+  },
+
+  integrations = {
+    enable_wakatime = true,
+    enable_database = true,
+  },
+}

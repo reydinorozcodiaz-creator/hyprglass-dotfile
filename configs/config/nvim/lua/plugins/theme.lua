@@ -1,36 +1,35 @@
+local project = require("config.project")
+
 return {
-  -- Theme: Ayu
   {
     "Shatur/neovim-ayu",
     lazy = false,
     priority = 1000,
     config = function()
-      -- Configure ayu options
-      require('ayu').setup({
-        mirage = false, 
+      local variant = project.theme_variant()
+      vim.o.background = variant == "light" and "light" or "dark"
+
+      require("ayu").setup({
+        mirage = variant == "mirage",
         overrides = {
-             -- Manual transparency overrides if needed
-             Normal = { bg = "none" },
-             ColorColumn = { bg = "none" },
-             SignColumn = { bg = "none" },
-             Folded = { bg = "none" },
-             FoldColumn = { bg = "none" },
-             CursorLine = { bg = "none" },
-             CursorColumn = { bg = "none" },
-             WhichKeyFloat = { bg = "none" },
-             VertSplit = { bg = "none" },
+          ColorColumn = { bg = "none" },
+          CursorColumn = { bg = "none" },
+          CursorLine = { bg = "none" },
+          FoldColumn = { bg = "none" },
+          Folded = { bg = "none" },
+          Normal = { bg = "none" },
+          SignColumn = { bg = "none" },
+          VertSplit = { bg = "none" },
+          WhichKeyFloat = { bg = "none" },
         },
       })
-      
-      -- Load the colorscheme
-      vim.cmd.colorscheme "ayu"
 
-      -- Force transparency on top of the theme
+      vim.cmd.colorscheme("ayu")
+
       vim.api.nvim_set_hl(0, "Normal", { bg = "none" })
       vim.api.nvim_set_hl(0, "NormalFloat", { bg = "none" })
       vim.api.nvim_set_hl(0, "FloatBorder", { bg = "none" })
       vim.api.nvim_set_hl(0, "Pmenu", { bg = "none" })
-      
     end,
   },
 }

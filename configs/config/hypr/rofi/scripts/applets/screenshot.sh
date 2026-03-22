@@ -88,7 +88,7 @@ notify_view() {
 
 # Copy screenshot to clipboard
 copy_shot () {
-	tee "$file" | xclip -selection clipboard -t image/png
+	wl-copy < "$file"
 }
 
 # countdown
@@ -101,29 +101,29 @@ countdown () {
 
 # take shots
 shotnow () {
-	cd ${dir} && sleep 0.5 && maim -u -f png | copy_shot
+	cd ${dir} && sleep 0.5 && grim "$file" && copy_shot
 	notify_view
 }
 
 shot5 () {
 	countdown '5'
-	sleep 1 && cd ${dir} && maim -u -f png | copy_shot
+	sleep 1 && cd ${dir} && grim "$file" && copy_shot
 	notify_view
 }
 
 shot10 () {
 	countdown '10'
-	sleep 1 && cd ${dir} && maim -u -f png | copy_shot
+	sleep 1 && cd ${dir} && grim "$file" && copy_shot
 	notify_view
 }
 
 shotwin () {
-	cd ${dir} && maim -u -f png -i `xdotool getactivewindow` | copy_shot
+	cd ${dir} && grim -g "$(hyprctl activewindow -j | grep -v '""' | awk -F'[:,]' '/"at":/ {getline; x=$1; getline; y=$1} /"size":/ {getline; w=$1; getline; h=$1} END {print x","y" "w"x"h}' | tr -d ' ' | sed 's/x/ x /g' | awk '{print $1" "$2x$3}')" "$file" && copy_shot
 	notify_view
 }
 
 shotarea () {
-	cd ${dir} && maim -u -f png -s -b 2 -c 0.35,0.55,0.85,0.25 -l | copy_shot
+	cd ${dir} && grim -g "$(slurp)" "$file" && copy_shot
 	notify_view
 }
 
