@@ -1,0 +1,10 @@
+# Matugen Configuration for QuickShell
+# Material You theming from wallpapers
+
+[config]
+reload_apps = false
+set_gnome_mode = false
+
+[templates.quickshell-palette]
+input_path = "~/.config/quickshell/matugen/quickshell-palette.template"
+output_path = "~/.cache/matugen/quickshell-palette.json"
