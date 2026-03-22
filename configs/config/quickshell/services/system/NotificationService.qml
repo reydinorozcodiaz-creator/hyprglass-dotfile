@@ -84,7 +84,7 @@ Singleton {
 
     Timer {
         id: popupLifecycleTimer
-        interval: 100
+        interval: 33
         repeat: true
         running: root.activePopupCount > 0 && !root.dndEnabled
 
@@ -126,7 +126,7 @@ Singleton {
     NotificationServer {
         id: server
 
-        keepOnReload: true
+        keepOnReload: false
         actionsSupported: true
         actionIconsSupported: true
         bodyHyperlinksSupported: true
@@ -136,6 +136,11 @@ Singleton {
         persistenceSupported: true
 
         onNotification: notif => {
+            if (notif.lastGeneration) {
+                console.log("[Notif] Ignoring previous generation:", notif.appName, "-", notif.summary);
+                return;
+            }
+
             console.log("[Notif] Received:", notif.appName, "-", notif.summary);
 
             notif.tracked = true;

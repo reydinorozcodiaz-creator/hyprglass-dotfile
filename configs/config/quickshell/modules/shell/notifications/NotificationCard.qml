@@ -49,9 +49,19 @@ Item {
 
     // Timer progress (0.0 to 1.0) - comes directly from the wrapper
     readonly property real progress: wrapper ? wrapper.progress : 0.0
+    property real displayedProgress: progress
 
     // Check if paused (hover)
     readonly property bool isPaused: wrapper && wrapper.isPaused
+
+    Behavior on displayedProgress {
+        enabled: root.popupMode && !root.isExiting
+        SmoothedAnimation {
+            velocity: 1.0 / Math.max(0.001, Config.notifTimeout / 1000.0)
+            maximumEasingTime: Config.animDurationShort
+            reversingMode: SmoothedAnimation.Immediate
+        }
+    }
 
     // Filter actions that should not be shown as buttons
     readonly property var visibleActions: {
@@ -158,24 +168,6 @@ Item {
         Rectangle {
             anchors.fill: parent
             color: Config.backgroundTransparentColor
-        }
-
-        // Progress bar (only in popup mode)
-        Rectangle {
-            id: progressBar
-            visible: root.popupMode
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            height: 3
-            width: parent.width * (1.0 - root.progress)
-            color: root.isUrgent ? Config.errorColor : Config.accentColor
-
-            Behavior on width {
-                NumberAnimation {
-                    duration: 120
-                    easing.type: Easing.Linear
-                }
-            }
         }
 
         // Content
@@ -327,6 +319,19 @@ Item {
                 }
             }
         }
+    }
+
+    // Keep the timeout bar outside the masked layer so its width animation
+    // doesn't force the whole popup card to be re-rendered every tick.
+    Rectangle {
+        id: progressBar
+        visible: root.popupMode
+        x: clippedContainer.x
+        y: clippedContainer.height - height
+        width: clippedContainer.width * (1.0 - root.displayedProgress)
+        height: 3
+        radius: height / 2
+        color: root.isUrgent ? Config.errorColor : Config.accentColor
     }
 
     // Outer border (hover state)
