@@ -134,6 +134,17 @@ ShellRoot {
         source: "./modules/shell/launcher/Launcher.qml"
     }
 
+    // Quick Settings
+    Loader {
+        active: QuickSettingsService.visible
+        source: "./modules/shell/quickSettings/QuickSettingsWindow.qml"
+
+        onStatusChanged: {
+            if (status === Loader.Ready && item)
+                item.visible = true;
+        }
+    }
+
     // OSD
     Loader {
         active: OsdService.visible
@@ -215,6 +226,13 @@ ShellRoot {
         description: "App Launcher"
 
         onPressed: LauncherService.show()
+    }
+
+    GlobalShortcut {
+        name: "quick_settings"
+        description: "Quick Settings"
+
+        onPressed: QuickSettingsService.show("dashboard")
     }
 
     // Shortcut: Volume Up
@@ -302,5 +320,25 @@ ShellRoot {
         description: "Keybinds help"
 
         onPressed: keybindsLoader.toggle()
+    }
+
+    Connections {
+        target: ShortcutService
+
+        function onScreenshotRequested() {
+            root.screenshotActive = true;
+        }
+
+        function onPowerMenuRequested() {
+            PowerService.showOverlay();
+        }
+
+        function onQuickSettingsRequested() {
+            QuickSettingsService.show("dashboard");
+        }
+
+        function onClipboardRequested() {
+            ClipboardService.show();
+        }
     }
 }

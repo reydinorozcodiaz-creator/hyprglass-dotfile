@@ -2,20 +2,17 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.config
+import qs.services
 import qs.components
 
 BarButton {
     id: root
 
-    active: quickSettingsLoader.active && quickSettingsLoader.item && quickSettingsLoader.item.visible
+    active: QuickSettingsService.visible
     contentItem: iconsLayout
     onClicked: {
         pulseAnimation.start()
-        if (quickSettingsLoader.active && quickSettingsLoader.item) {
-            quickSettingsLoader.item.closeWindow();
-        } else {
-            quickSettingsLoader.active = true;
-        }
+        QuickSettingsService.toggle("dashboard")
     }
 
     RowLayout {
@@ -50,19 +47,6 @@ BarButton {
         }
         BatteryIcon {
             color: iconsLayout.iconColor
-        }
-    }
-
-    Loader {
-        id: quickSettingsLoader
-        active: false
-        source: "./QuickSettingsWindow.qml"
-
-        onStatusChanged: {
-            if (status === Loader.Ready && item) {
-                item.visible = true;
-                item.closing.connect(() => { quickSettingsLoader.active = false; });
-            }
         }
     }
 

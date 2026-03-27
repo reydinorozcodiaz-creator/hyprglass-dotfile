@@ -398,7 +398,7 @@ Column {
                         }
 
                         Repeater {
-                            model: partItem.modelData.sources || []
+                            model: MessageParts.groupSources(partItem.modelData.sources || [])
 
                             delegate: Rectangle {
                                 required property var modelData
@@ -408,51 +408,93 @@ Column {
                                 color: Qt.alpha(Config.surface0Color, 0.92)
                                 border.width: 1
                                 border.color: Qt.alpha(Config.surface2Color, 0.22)
-                                implicitHeight: sourceCol.implicitHeight + 12
+                                implicitHeight: sourceGroupCol.implicitHeight + 12
 
                                 Column {
-                                    id: sourceCol
+                                    id: sourceGroupCol
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    spacing: 4
+                                    spacing: 6
 
-                                    Text {
-                                        width: parent.width
-                                        text: modelData.title || modelData.url || "Fuente"
-                                        font.family: Config.font
-                                        font.pixelSize: 10
-                                        font.bold: true
-                                        color: Config.textColor
-                                        wrapMode: Text.Wrap
+                                    Row {
+                                        spacing: 6
+
+                                        Rectangle {
+                                            height: 18
+                                            width: domainLabel.implicitWidth + 12
+                                            radius: 9
+                                            color: Qt.alpha(Config.accentColor, 0.12)
+                                            border.width: 1
+                                            border.color: Qt.alpha(Config.accentColor, 0.2)
+
+                                            Text {
+                                                id: domainLabel
+                                                anchors.centerIn: parent
+                                                text: modelData.host || "otras"
+                                                font.family: Config.font
+                                                font.pixelSize: 9
+                                                font.bold: true
+                                                color: Config.accentColor
+                                            }
+                                        }
+
+                                        Text {
+                                            text: (modelData.items || []).length + " fuente" + (((modelData.items || []).length === 1) ? "" : "s")
+                                            font.family: Config.font
+                                            font.pixelSize: 9
+                                            color: Config.subtextColor
+                                            opacity: 0.8
+                                        }
                                     }
 
-                                    Text {
-                                        width: parent.width
-                                        text: modelData.snippet || ""
-                                        visible: text !== ""
-                                        font.family: Config.font
-                                        font.pixelSize: 10
-                                        color: Config.subtextColor
-                                        wrapMode: Text.Wrap
-                                        maximumLineCount: 2
-                                        elide: Text.ElideRight
-                                    }
+                                    Repeater {
+                                        model: modelData.items || []
 
-                                    Text {
-                                        width: parent.width
-                                        text: "Abrir fuente · " + MessageParts.displayUrl(modelData.url || "")
-                                        visible: text !== ""
-                                        font.family: Config.font
-                                        font.pixelSize: 9
-                                        color: Config.accentColor
-                                        wrapMode: Text.NoWrap
-                                        elide: Text.ElideMiddle
-                                        maximumLineCount: 1
+                                        delegate: Column {
+                                            required property var modelData
 
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.openLink(modelData.url || "")
+                                            width: parent.width
+                                            spacing: 3
+
+                                            Text {
+                                                width: parent.width
+                                                text: modelData.title || modelData.url || "Fuente"
+                                                font.family: Config.font
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: Config.textColor
+                                                wrapMode: Text.Wrap
+                                            }
+
+                                            Text {
+                                                width: parent.width
+                                                text: modelData.snippet || ""
+                                                visible: text !== ""
+                                                font.family: Config.font
+                                                font.pixelSize: 10
+                                                color: Config.subtextColor
+                                                wrapMode: Text.Wrap
+                                                maximumLineCount: 2
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Text {
+                                                width: parent.width
+                                                text: "Abrir fuente · " + MessageParts.displayUrl(modelData.url || "")
+                                                visible: text !== ""
+                                                font.family: Config.font
+                                                font.pixelSize: 9
+                                                color: Config.accentColor
+                                                wrapMode: Text.NoWrap
+                                                elide: Text.ElideMiddle
+                                                maximumLineCount: 1
+
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: root.openLink(modelData.url || "")
+                                                }
+                                            }
                                         }
                                     }
                                 }

@@ -68,16 +68,6 @@ QsPopupWindow {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
-    function providerLabel(providerId) {
-        if (providerId === "copilot")
-            return "GitHub Copilot";
-        if (providerId === "zeroclaw")
-            return "ZeroClaw";
-        if (!providerId || providerId.length === 0)
-            return "AI";
-        return providerId.charAt(0).toUpperCase() + providerId.slice(1);
-    }
-
     function modelLabelForMessage(message) {
         return message.model || AiService.model;
     }
@@ -93,11 +83,10 @@ QsPopupWindow {
     }
 
     function quoteMessage(text) {
-        const cleaned = (text || "").trim();
-        if (cleaned === "")
+        const quoted = AiService.quoteText(text);
+        if (quoted === "")
             return;
 
-        const quoted = cleaned.split("\n").map(line => line === "" ? ">" : "> " + line).join("\n");
         const next = inputField.text.trim() === ""
             ? quoted + "\n\n"
             : inputField.text + "\n\n" + quoted + "\n\n";
@@ -1252,7 +1241,7 @@ QsPopupWindow {
                                             ? "Accion local"
                                             : (msgItem.isSystemNotice
                                                 ? "Orbit"
-                                                : root.providerLabel(msgItem.modelData.provider || AiService.provider)))
+                                                : AiService.providerLabel(msgItem.modelData.provider || AiService.provider)))
                                     font.family: Config.font
                                     font.pixelSize: 11
                                     font.bold: true

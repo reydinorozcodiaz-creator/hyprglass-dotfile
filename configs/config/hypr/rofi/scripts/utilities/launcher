@@ -13,7 +13,7 @@ rofi \
     -drun-match-fields name \
     -drun-display-format "{name}" \
     -no-drun-show-actions \
-    -terminal alacritty \
+    -terminal kitty \
     -kb-cancel Alt-F1 \
     -matching glob \
       -sort \

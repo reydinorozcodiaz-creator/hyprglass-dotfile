@@ -12,7 +12,7 @@ rofi \
 	-drun-match-fields name \
 	-drun-display-format "{name}" \
 	-no-drun-show-actions \
-	-terminal alacritty \
+	-terminal kitty \
 	-kb-cancel Escape \
 	-disable-history \
 	-matching glob \

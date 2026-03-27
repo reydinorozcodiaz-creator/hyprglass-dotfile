@@ -41,57 +41,141 @@ def _read_message(proc: subprocess.Popen) -> dict[str, Any]:
     raise McpError(stderr_text or "MCP server exited without a response.")
 
 
-def call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-    proc = subprocess.Popen(
-        _default_server_command(),
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+class McpSession:
+    def __init__(self, command: list[str] | None = None) -> None:
+        self.command = command or _default_server_command()
+        self.proc: subprocess.Popen | None = None
+        self._next_id = 1
+        self._initialized = False
 
-    try:
-        _write_message(
-            proc,
-            {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "quickshell-ai-chat", "version": "0.1.0"},
-                },
-            },
-        )
-        init_resp = _read_message(proc)
-        if "error" in init_resp:
-            raise McpError(init_resp["error"].get("message", "MCP initialize failed."))
+    def __enter__(self) -> "McpSession":
+        self.start()
+        return self
 
-        _write_message(
-            proc,
-            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+    def start(self) -> None:
+        if self.proc is not None:
+            return
+
+        self.proc = subprocess.Popen(
+            self.command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
         )
-        _write_message(
-            proc,
-            {
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/call",
-                "params": {"name": name, "arguments": arguments},
-            },
-        )
-        response = _read_message(proc)
-        if "error" in response:
-            raise McpError(response["error"].get("message", "MCP tool call failed."))
-        return response.get("result", {})
-    finally:
-        if proc.poll() is None:
-            proc.terminate()
+        self.initialize()
+
+    def close(self) -> None:
+        if self.proc is None:
+            return
+
+        if self.proc.poll() is None:
+            self.proc.terminate()
             try:
-                proc.wait(timeout=1)
+                self.proc.wait(timeout=1)
             except subprocess.TimeoutExpired:
-                proc.kill()
+                self.proc.kill()
+
+        if self.proc.stdin is not None:
+            self.proc.stdin.close()
+        if self.proc.stdout is not None:
+            self.proc.stdout.close()
+        if self.proc.stderr is not None:
+            self.proc.stderr.close()
+
+        self.proc = None
+        self._initialized = False
+
+    def _require_proc(self) -> subprocess.Popen:
+        if self.proc is None:
+            raise McpError("MCP session is not running.")
+        return self.proc
+
+    def _request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        proc = self._require_proc()
+        req_id = self._next_id
+        self._next_id += 1
+
+        payload = {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "method": method,
+            "params": params or {},
+        }
+        _write_message(proc, payload)
+        return self._read_response(req_id)
+
+    def _notify(self, method: str, params: dict[str, Any] | None = None) -> None:
+        proc = self._require_proc()
+        _write_message(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": params or {},
+            },
+        )
+
+    def _read_response(self, req_id: int) -> dict[str, Any]:
+        proc = self._require_proc()
+        while True:
+            message = _read_message(proc)
+            if message.get("id") != req_id:
+                continue
+            if "error" in message:
+                raise McpError(
+                    message["error"].get("message", f"MCP request failed: {req_id}")
+                )
+            return message.get("result", {})
+
+    def initialize(self) -> dict[str, Any]:
+        if self._initialized:
+            return {}
+
+        result = self._request(
+            "initialize",
+            {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "quickshell-ai-chat", "version": "0.1.0"},
+            },
+        )
+        self._notify("notifications/initialized", {})
+        self._initialized = True
+        return result
+
+    def list_tools(self) -> list[dict[str, Any]]:
+        result = self._request("tools/list", {})
+        tools = result.get("tools", [])
+        return tools if isinstance(tools, list) else []
+
+    def has_tool(self, name: str) -> bool:
+        tools = self.list_tools()
+        return any(str(tool.get("name", "")).strip() == name for tool in tools)
+
+    def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._request(
+            "tools/call",
+            {"name": name, "arguments": arguments},
+        )
+
+
+def list_tools() -> list[dict[str, Any]]:
+    with McpSession() as session:
+        return session.list_tools()
+
+
+def has_tool(name: str) -> bool:
+    with McpSession() as session:
+        return session.has_tool(name)
+
+
+def call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    with McpSession() as session:
+        return session.call_tool(name, arguments)
 
 
 def web_search(query: str, max_results: int = 5) -> dict[str, Any]:

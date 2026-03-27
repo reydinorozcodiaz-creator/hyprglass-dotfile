@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import urllib.parse
 import mcp_client
 from common_paths import read_path_preview, shell_readable_path
 
@@ -256,6 +257,33 @@ class AgentRuntime:
                 True,
                 False,
             ),
+            "search_codebase": ToolSpec(
+                "search_codebase", "Search text in a local repository or folder.", False
+            ),
+            "git_status": ToolSpec(
+                "git_status", "Inspect git status for a repository.", False
+            ),
+            "git_diff": ToolSpec(
+                "git_diff", "Inspect git diff for a repository.", False
+            ),
+            "git_log": ToolSpec(
+                "git_log", "Inspect recent git commits.", False
+            ),
+            "search_docs": ToolSpec(
+                "search_docs", "Search official documentation.", False
+            ),
+            "fetch_url": ToolSpec(
+                "fetch_url", "Fetch and summarize a URL.", False
+            ),
+            "read_logs": ToolSpec(
+                "read_logs", "Read quickshell or journal logs.", False
+            ),
+            "get_system_status": ToolSpec(
+                "get_system_status", "Read safe local system status.", False
+            ),
+            "get_package_stats": ToolSpec(
+                "get_package_stats", "Read local package manager and AUR stats.", False
+            ),
         }
 
     def _load_state(self) -> dict:
@@ -432,6 +460,83 @@ class AgentRuntime:
             )
         )
 
+    def _wants_codebase_search(self, text: str) -> bool:
+        return (
+            any(token in text for token in ("repo", "repositorio", "codebase", "codigo", "código"))
+            and any(token in text for token in ("busca", "buscar", "find", "encuentra", "search"))
+        )
+
+    def _wants_git_status(self, text: str) -> bool:
+        return "git status" in text or "estado de git" in text
+
+    def _wants_git_diff(self, text: str) -> bool:
+        return "git diff" in text or "diff git" in text or "cambios git" in text
+
+    def _wants_git_log(self, text: str) -> bool:
+        return any(token in text for token in ("git log", "ultimos commits", "últimos commits", "commits recientes", "recent commits"))
+
+    def _wants_docs_search(self, text: str) -> bool:
+        return any(token in text for token in ("documentacion", "documentación", "docs", "official docs", "api docs"))
+
+    def _wants_fetch_url(self, text: str) -> bool:
+        return self._extract_url(text) is not None and any(
+            token in text for token in ("abre", "abrir", "lee", "leer", "fetch", "resume", "summarize", "inspecciona", "mira")
+        )
+
+    def _wants_logs(self, text: str) -> bool:
+        return any(token in text for token in ("logs", "log", "journal", "quickshell log", "errores", "error log"))
+
+    def _wants_system_status(self, text: str) -> bool:
+        return any(
+            token in text
+            for token in (
+                "estado del sistema",
+                "system status",
+                "battery",
+                "bateria",
+                "batería",
+                "network",
+                "red",
+                "audio",
+                "bluetooth",
+            )
+        )
+
+    def _wants_package_stats(self, text: str) -> bool:
+        count_markers = (
+            "cuantos",
+            "cuántos",
+            "cantidad",
+            "numero",
+            "número",
+            "how many",
+            "count",
+        )
+        package_markers = (
+            "aur",
+            "pacman",
+            "paquetes",
+            "packages",
+            "foreign packages",
+        )
+        install_markers = (
+            "instalado",
+            "instalados",
+            "installed",
+            "tengo",
+        )
+        return (
+            any(marker in text for marker in count_markers)
+            and any(marker in text for marker in package_markers)
+            and any(marker in text for marker in install_markers)
+        ) or "paquetes de aur" in text
+
+    def _extract_package_scope(self, text: str) -> str:
+        lowered = text.lower()
+        if "aur" in lowered or "foreign" in lowered:
+            return "aur"
+        return "overview"
+
     def _extract_search_query(self, text: str) -> str:
         query = re.sub(
             r"^\s*(busca(?:r)?(?: en (?:la )?(?:web|internet))?|search(?: the web| online)?|googlea(?:r)?)\s+",
@@ -440,6 +545,43 @@ class AgentRuntime:
             flags=re.IGNORECASE,
         ).strip(" :")
         return query or text.strip()
+
+    def _extract_docs_query(self, text: str) -> str:
+        query = re.sub(
+            r"^\s*(busca(?:r)?\s+)?(?:en\s+)?(?:la\s+)?(?:documentacion|documentación|docs|official docs|api docs)\s+",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        ).strip(" :")
+        return query or text.strip()
+
+    def _extract_docs_product(self, text: str) -> str:
+        lowered = text.lower()
+        for product in ("quickshell", "qt", "qml", "hyprland", "openai", "python", "mdn", "git", "github", "gemini"):
+            if product in lowered:
+                return product
+        return ""
+
+    def _extract_log_source(self, text: str) -> tuple[str, str]:
+        lowered = text.lower()
+        if "quickshell" in lowered:
+            return "quickshell", ""
+        unit_match = re.search(r"(?:servicio|service|unidad|unit)\s+([a-zA-Z0-9_.@-]+)", text, flags=re.IGNORECASE)
+        if unit_match:
+            return "journal_service", unit_match.group(1)
+        return "journal_user", ""
+
+    def _extract_system_target(self, text: str) -> str:
+        lowered = text.lower()
+        if "bateria" in lowered or "batería" in lowered or "battery" in lowered:
+            return "battery"
+        if "network" in lowered or "red" in lowered:
+            return "network"
+        if "audio" in lowered:
+            return "audio"
+        if "bluetooth" in lowered:
+            return "bluetooth"
+        return "overview"
 
     def _default_user_folder(self, alias: str, fallback: str) -> str:
         resolved = self._resolve_special_folder(alias)
@@ -605,12 +747,91 @@ class AgentRuntime:
         default_documents = self._default_user_folder("documentos", "Documents")
         default_desktop = self._default_user_folder("escritorio", "Desktop")
 
+        if self._wants_codebase_search(lowered):
+            query = self._extract_search_query(text)
+            root = self._extract_path_like_token(text) or self._extract_destination(text) or os.getcwd()
+            return {
+                "tool": "search_codebase",
+                "args": {"pattern": query, "root": root, "limit": 40},
+                "summary": f"Search the codebase for `{query}` under `{root}`.",
+            }
+
+        if self._wants_git_status(lowered):
+            target = self._extract_path_like_token(text) or self._extract_destination(text) or os.getcwd()
+            return {
+                "tool": "git_status",
+                "args": {"path": target},
+                "summary": f"Inspect git status for `{target}`.",
+            }
+
+        if self._wants_git_diff(lowered):
+            target = self._extract_path_like_token(text) or self._extract_destination(text) or os.getcwd()
+            return {
+                "tool": "git_diff",
+                "args": {"path": target},
+                "summary": f"Inspect git diff for `{target}`.",
+            }
+
+        if self._wants_git_log(lowered):
+            target = self._extract_path_like_token(text) or self._extract_destination(text) or os.getcwd()
+            return {
+                "tool": "git_log",
+                "args": {"path": target, "limit": 10},
+                "summary": f"Inspect recent git commits for `{target}`.",
+            }
+
+        if self._wants_docs_search(lowered):
+            query = self._extract_docs_query(text)
+            return {
+                "tool": "search_docs",
+                "args": {
+                    "query": query,
+                    "product": self._extract_docs_product(text),
+                    "limit": 5,
+                },
+                "summary": f"Search documentation for `{query}`.",
+            }
+
         if self._wants_web_search(lowered) and not self._extract_path_like_token(text):
             query = self._extract_search_query(text)
             return {
                 "tool": "web_search",
                 "args": {"query": query, "limit": 5},
                 "summary": f"Search the web for `{query}`.",
+            }
+
+        if self._wants_fetch_url(lowered):
+            url = self._extract_url(text)
+            if url:
+                return {
+                    "tool": "fetch_url",
+                    "args": {"url": url},
+                    "summary": f"Fetch URL `{url}` and summarize it.",
+                }
+
+        if self._wants_logs(lowered):
+            source, unit = self._extract_log_source(text)
+            return {
+                "tool": "read_logs",
+                "args": {"source": source, "unit": unit, "lines": 120},
+                "summary": f"Read logs from source `{source}`" + (f" for `{unit}`." if unit else "."),
+            }
+
+        if self._wants_package_stats(lowered):
+            scope = self._extract_package_scope(text)
+            return {
+                "tool": "get_package_stats",
+                "args": {"scope": scope},
+                "summary": "Read local package statistics"
+                + (" for AUR packages." if scope == "aur" else "."),
+            }
+
+        if self._wants_system_status(lowered):
+            target = self._extract_system_target(text)
+            return {
+                "tool": "get_system_status",
+                "args": {"target": target},
+                "summary": f"Read system status for `{target}`.",
             }
 
         if any(
@@ -891,13 +1112,7 @@ class AgentRuntime:
         ok, path_or_error = self.path_policy.validate_existing_path(args["path"])
         if not ok:
             return {"ok": True, "content": path_or_error}
-        preview = read_path_preview(path_or_error, max_bytes=10000)
-        if not preview.get("ok"):
-            return {"ok": True, "content": preview["error"]}
-        return {
-            "ok": True,
-            "content": f"Local path analysis for `{path_or_error}`:\n\n{preview['preview']}",
-        }
+        return self._run_mcp_read_path({"path": path_or_error, "max_bytes": 10000})
 
     def _run_list_directory(self, args: dict) -> dict:
         ok, path_or_error = self.path_policy.validate_existing_path(args["path"])
@@ -906,31 +1121,7 @@ class AgentRuntime:
         root = Path(path_or_error)
         if root.is_file():
             root = root.parent
-        if not root.is_dir():
-            return {
-                "ok": True,
-                "content": (
-                    "No pude encontrar una carpeta valida para listar. "
-                    "Prueba indicando una ruta de carpeta o una carpeta conocida como Descargas."
-                ),
-            }
-        try:
-            entries = sorted(
-                root.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower())
-            )
-        except Exception as exc:
-            return {"ok": True, "content": f"Failed to list `{root}`: {exc}"}
-
-        limit = args.get("limit", 80)
-        lines = []
-        for item in entries[:limit]:
-            label = "dir" if item.is_dir() else "file"
-            lines.append(f"- `{item.name}` ({label})")
-        if len(entries) > limit:
-            lines.append(f"- ... and {len(entries) - limit} more")
-        if not lines:
-            return {"ok": True, "content": f"`{root}` is empty."}
-        return {"ok": True, "content": f"Contents of `{root}`:\n\n" + "\n".join(lines)}
+        return self._run_mcp_list_directory({"path": str(root), "max_entries": args.get("limit", 80)})
 
     def _run_list_heavy_files(self, args: dict) -> dict:
         ok, path_or_error = self.path_policy.validate_existing_path(args["path"])
@@ -984,14 +1175,36 @@ class AgentRuntime:
     def _run_web_search(self, args: dict) -> dict:
         query = args["query"]
         try:
-            time_result = mcp_client.lookup_current_time(query)
-            time_info = (time_result.get("structuredContent") or {}).get("result")
-        except Exception:
-            time_info = None
+            with mcp_client.McpSession() as mcp_session:
+                tools = {
+                    str(tool.get("name", "")).strip()
+                    for tool in mcp_session.list_tools()
+                    if tool
+                }
 
-        try:
-            response = mcp_client.web_search(query, max_results=int(args.get("limit", 5)))
-            results = (response.get("structuredContent") or {}).get("results", [])
+                if "lookup_current_time" in tools:
+                    try:
+                        time_result = mcp_session.call_tool(
+                            "lookup_current_time",
+                            {"query": query},
+                        )
+                        time_info = (time_result.get("structuredContent") or {}).get("result")
+                    except Exception:
+                        time_info = None
+                else:
+                    time_info = None
+
+                if "web_search" not in tools:
+                    return {
+                        "ok": True,
+                        "content": "MCP server does not expose the `web_search` tool.",
+                    }
+
+                response = mcp_session.call_tool(
+                    "web_search",
+                    {"query": query, "max_results": int(args.get("limit", 5))},
+                )
+                results = (response.get("structuredContent") or {}).get("results", [])
         except Exception as exc:
             return {"ok": True, "content": f"MCP web_search failed for `{query}`: {exc}"}
 
@@ -1019,6 +1232,112 @@ class AgentRuntime:
                 lines.append(f"   {item['snippet']}")
 
         return {"ok": True, "content": "\n".join(lines)}
+
+    def _call_mcp_tool(self, tool_name: str, arguments: dict) -> tuple[bool, str, dict]:
+        try:
+            with mcp_client.McpSession() as mcp_session:
+                if not mcp_session.has_tool(tool_name):
+                    return False, f"MCP server does not expose the `{tool_name}` tool.", {}
+                response = mcp_session.call_tool(tool_name, arguments)
+        except Exception as exc:
+            return False, f"MCP `{tool_name}` failed: {exc}", {}
+
+        content = response.get("content") or []
+        text = ""
+        if content and isinstance(content, list):
+            text = str(content[0].get("text", "")).strip()
+        if not text:
+            text = json.dumps(response.get("structuredContent", {}), ensure_ascii=False, indent=2)
+        return True, text, response
+
+    def _run_mcp_read_path(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool(
+            "read_path",
+            {"path": args["path"], "max_bytes": int(args.get("max_bytes", 12000))},
+        )
+        return {"ok": True, "content": text}
+
+    def _run_mcp_list_directory(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool(
+            "list_directory",
+            {
+                "path": args["path"],
+                "max_entries": int(args.get("max_entries", 120)),
+                "include_hidden": bool(args.get("include_hidden", False)),
+            },
+        )
+        return {"ok": True, "content": text}
+
+    def _run_search_codebase(self, args: dict) -> dict:
+        root = args["root"]
+        ok, validated = self.path_policy.validate_existing_path(root)
+        if not ok:
+            return {"ok": True, "content": validated}
+        if Path(validated).is_file():
+            validated = str(Path(validated).parent)
+        ok, text, _ = self._call_mcp_tool(
+            "search_codebase",
+            {
+                "pattern": args["pattern"],
+                "root": validated,
+                "max_results": int(args.get("limit", 40)),
+            },
+        )
+        return {"ok": True, "content": text}
+
+    def _run_git_status(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool("git_status", {"path": args["path"]})
+        return {"ok": True, "content": text}
+
+    def _run_git_diff(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool(
+            "git_diff",
+            {"path": args["path"], "ref": args.get("ref", "")},
+        )
+        return {"ok": True, "content": text}
+
+    def _run_git_log(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool(
+            "git_log",
+            {"path": args["path"], "max_entries": int(args.get("limit", 10))},
+        )
+        return {"ok": True, "content": text}
+
+    def _run_search_docs(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool(
+            "search_docs",
+            {
+                "query": args["query"],
+                "product": args.get("product", ""),
+                "max_results": int(args.get("limit", 5)),
+            },
+        )
+        return {"ok": True, "content": text}
+
+    def _run_fetch_url(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool("fetch_url", {"url": args["url"]})
+        return {"ok": True, "content": text}
+
+    def _run_read_logs(self, args: dict) -> dict:
+        payload = {"source": args.get("source", "quickshell"), "lines": int(args.get("lines", 120))}
+        if args.get("unit"):
+            payload["unit"] = args["unit"]
+        ok, text, _ = self._call_mcp_tool("read_logs", payload)
+        return {"ok": True, "content": text}
+
+    def _run_get_system_status(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool(
+            "get_system_status",
+            {"target": args.get("target", "overview")},
+        )
+        return {"ok": True, "content": text}
+
+    def _run_get_package_stats(self, args: dict) -> dict:
+        ok, text, _ = self._call_mcp_tool(
+            "get_package_stats",
+            {"scope": args.get("scope", "overview")},
+        )
+        return {"ok": True, "content": text}
 
     def _run_analyze_dependencies_for_task(self, args: dict) -> dict:
         task = args["task"]

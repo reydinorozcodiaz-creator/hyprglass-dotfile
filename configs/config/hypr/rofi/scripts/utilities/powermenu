@@ -1,72 +1,82 @@
 #!/usr/bin/env bash
 
-## Copyright (C) 2020-2021 Aditya Shakya <adi1090x@gmail.com>
-## Everyone is permitted to copy and distribute copies of this file under GNU-GPL3
-
 DIR="$HOME/.config/hypr"
-
-rofi_command="rofi -theme $DIR/rofi/themes/powermenu.rasi"
+LOCK_CMD="$DIR/scripts/system/lock.sh"
+ROFI_THEME="$DIR/rofi/themes/powermenu.rasi"
+ASKPASS_THEME="$DIR/rofi/themes/askpass.rasi"
+CONFIRM_CMD="$DIR/rofi/scripts/utilities/confirm"
 
 uptime=$(uptime -p | sed -e 's/up //g')
 
-# Options
 shutdown=""
 reboot=""
 lock=""
 suspend=""
 logout=""
 
-# Variable passed to rofi
 options="$shutdown\n$reboot\n$lock\n$suspend\n$logout"
-_msg="Options  -  yes / y / no / n"
+invalid_msg="Options - yes / y / no / n"
 
-chosen="$(echo -e "$options" | $rofi_command -p "UP - $uptime" -dmenu )"
-case $chosen in
-    $shutdown)
-		ans=$($HOME/.config/hypr/rofi/scripts/utilities/confirm)
-		if [[ $ans == "yes" ]] || [[ $ans == "YES" ]] || [[ $ans == "y" ]]; then
-        systemctl poweroff
-		elif [[ $ans == "no" ]] || [[ $ans == "NO" ]] || [[ $ans == "n" ]]; then
-        exit
-        else
-        rofi -theme $HOME/.config/hypr/rofi/themes/askpass.rasi -e "$_msg"
+ask_confirmation() {
+    local answer
+
+    answer=$("$CONFIRM_CMD")
+    case "${answer,,}" in
+        yes|y) return 0 ;;
+        no|n) return 1 ;;
+        *)
+            rofi -theme "$ASKPASS_THEME" -e "$invalid_msg"
+            return 2
+            ;;
+    esac
+}
+
+run_power_action() {
+    case "$1" in
+        shutdown)
+            systemctl poweroff
+            ;;
+        reboot)
+            systemctl reboot
+            ;;
+        lock)
+            "$LOCK_CMD"
+            ;;
+        suspend)
+            "$LOCK_CMD" &
+            sleep 0.5
+            systemctl suspend
+            ;;
+        logout)
+            hyprctl dispatch exit
+            ;;
+    esac
+}
+
+chosen=$(echo -e "$options" | rofi -theme "$ROFI_THEME" -p "UP - $uptime" -dmenu)
+
+case "$chosen" in
+    "$shutdown")
+        if ask_confirmation; then
+            run_power_action shutdown
         fi
         ;;
-    $reboot)
-		ans=$($HOME/.config/hypr/rofi/scripts/utilities/confirm)
-		if [[ $ans == "yes" ]] || [[ $ans == "YES" ]] || [[ $ans == "y" ]]; then
-        systemctl reboot
-		elif [[ $ans == "no" ]] || [[ $ans == "NO" ]] || [[ $ans == "n" ]]; then
-        exit
-        else
-        rofi -theme $HOME/.config/hypr/rofi/themes/askpass.rasi -e "$_msg"
+    "$reboot")
+        if ask_confirmation; then
+            run_power_action reboot
         fi
         ;;
-    $lock)
-        bsplock
+    "$lock")
+        run_power_action lock
         ;;
-    $suspend)
-		ans=$($HOME/.config/hypr/rofi/scripts/utilities/confirm)
-		if [[ $ans == "yes" ]] || [[ $ans == "YES" ]] || [[ $ans == "y" ]]; then
-        mpc -q pause
-        #amixer set Master mute
-        # betterlockscreen --suspend
-        betterlockscreen -l dim
-		elif [[ $ans == "no" ]] || [[ $ans == "NO" ]] || [[ $ans == "n" ]]; then
-        exit
-        else
-        rofi -theme $HOME/.config/hypr/rofi/themes/askpass.rasi -e "$_msg"
+    "$suspend")
+        if ask_confirmation; then
+            run_power_action suspend
         fi
         ;;
-    $logout)
-		ans=$($HOME/.config/hypr/rofi/scripts/utilities/confirm)
-		if [[ $ans == "yes" ]] || [[ $ans == "YES" ]] || [[ $ans == "y" ]]; then
-        hyprctl dispatch exit
-		elif [[ $ans == "no" ]] || [[ $ans == "NO" ]] || [[ $ans == "n" ]]; then
-        exit
-        else
-        rofi -theme $HOME/.config/hypr/rofi/themes/askpass.rasi -e "$_msg"
+    "$logout")
+        if ask_confirmation; then
+            run_power_action logout
         fi
         ;;
 esac
-

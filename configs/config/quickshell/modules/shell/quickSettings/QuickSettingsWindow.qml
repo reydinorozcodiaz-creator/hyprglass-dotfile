@@ -38,12 +38,53 @@ QsPopupWindow {
     readonly property int pageAudio: 7
     readonly property int pagePerformance: 8
 
+    function pageIndexForName(pageName) {
+        switch (pageName) {
+        case "wifi":
+            return pageWifi;
+        case "wifiPassword":
+            return pageWifiPassword;
+        case "bluetooth":
+            return pageBluetooth;
+        case "nightLight":
+            return pageNightLight;
+        case "theme":
+            return pageTheme;
+        case "dnd":
+            return pageDnd;
+        case "audio":
+            return pageAudio;
+        case "performance":
+            return pagePerformance;
+        default:
+            return pageDashboard;
+        }
+    }
+
     Component.onCompleted: {
         root.visible = false;
-        pageStack.currentIndex = pageDashboard;
+        pageStack.currentIndex = root.pageIndexForName(QuickSettingsService.requestedPage);
+        QuickSettingsService.registerWindow(root);
     }
 
     onClosing: pageStack.currentIndex = pageDashboard
+
+    Component.onDestruction: QuickSettingsService.unregisterWindow(root)
+
+    onVisibleChanged: {
+        if (!visible && QuickSettingsService.visible)
+            QuickSettingsService.notifyClosed();
+    }
+
+    Connections {
+        target: QuickSettingsService
+
+        function onRequestTokenChanged() {
+            pageStack.currentIndex = root.pageIndexForName(QuickSettingsService.requestedPage);
+            if (QuickSettingsService.visible && !root.visible)
+                root.visible = true;
+        }
+    }
 
     StackLayout {
         id: pageStack

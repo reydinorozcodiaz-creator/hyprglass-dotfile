@@ -39,7 +39,7 @@ OPENAI_MODELS_URL = "https://api.openai.com/v1/models"
 GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 LOCAL_AGENT_BASE_URL = os.environ.get("ASSISTANT_AGENT_URL", "http://127.0.0.1:8765")
 LOCAL_AGENT_STATE_PATH = os.path.expanduser(
-    "~/.config/quickshell/assistant_agent_bridge_state.json"
+    "~/.config/quickshell/data/state/assistant/assistant_agent_bridge_state.json"
 )
 LOCAL_AGENT_AUTOSTART = os.environ.get("ASSISTANT_AGENT_AUTOSTART", "1") == "1"
 LOCAL_AGENT_PROJECT_DIR = os.path.expanduser("~/.config/quickshell/assistant_agent")

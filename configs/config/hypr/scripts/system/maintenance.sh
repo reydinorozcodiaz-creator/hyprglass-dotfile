@@ -3,7 +3,8 @@
 # █▀░ █░▀█ ▀▄▀ █ █▀▄ █▄█ █░▀█ █░▀░█ ██▄ █░▀█ ░█░
 # Script de mantenimiento para Hyprland
 
-set -e
+set -euo pipefail
+IFS=$'\n\t'
 
 # Colores para output
 RED='\033[0;31m'

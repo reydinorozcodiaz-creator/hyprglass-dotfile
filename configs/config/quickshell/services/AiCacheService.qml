@@ -8,7 +8,8 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string cachePath: Quickshell.env("HOME") + "/.config/quickshell/ai-cache.json"
+    readonly property string cachePath: Quickshell.env("HOME") + "/.config/quickshell/data/cache/ai-cache.json"
+    readonly property string legacyCachePath: Quickshell.env("HOME") + "/.config/quickshell/ai-cache.json"
 
     property var state: ({})
     property bool isLoading: true
@@ -74,7 +75,7 @@ Singleton {
 
     Process {
         id: loadProc
-        command: ["bash", "-c", "cat '" + root.cachePath + "' 2>/dev/null || echo '{}'"]
+        command: ["bash", "-c", "cat '" + root.cachePath + "' 2>/dev/null || cat '" + root.legacyCachePath + "' 2>/dev/null || echo '{}'"]
 
         property string buffer: ""
 

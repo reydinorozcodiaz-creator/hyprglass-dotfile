@@ -73,6 +73,49 @@ class AgentRuntimeSafetyTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("Dangerous local tools are disabled", result["content"])
 
+    def test_detects_git_status_plan(self):
+        runtime = ai_agent_runtime.AgentRuntime(
+            {
+                "agentEnabled": True,
+                "dangerousToolsEnabled": False,
+                "toolAllowedRoots": [str(self.allowed)],
+                "toolBlockedRoots": [],
+                "messages": [{"role": "user", "content": "git status en " + str(self.allowed)}],
+            }
+        )
+        plan = runtime._detect_tool_plan("git status en " + str(self.allowed))
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["tool"], "git_status")
+
+    def test_detects_docs_search_plan(self):
+        runtime = ai_agent_runtime.AgentRuntime(
+            {
+                "agentEnabled": True,
+                "dangerousToolsEnabled": False,
+                "toolAllowedRoots": [str(self.allowed)],
+                "toolBlockedRoots": [],
+                "messages": [{"role": "user", "content": "busca docs de quickshell signals"}],
+            }
+        )
+        plan = runtime._detect_tool_plan("busca docs de quickshell signals")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["tool"], "search_docs")
+
+    def test_detects_aur_package_stats_plan(self):
+        runtime = ai_agent_runtime.AgentRuntime(
+            {
+                "agentEnabled": True,
+                "dangerousToolsEnabled": False,
+                "toolAllowedRoots": [str(self.allowed)],
+                "toolBlockedRoots": [],
+                "messages": [{"role": "user", "content": "oye cuantos paquetes de aur tengo instalado?"}],
+            }
+        )
+        plan = runtime._detect_tool_plan("oye cuantos paquetes de aur tengo instalado?")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["tool"], "get_package_stats")
+        self.assertEqual(plan["args"]["scope"], "aur")
+
 
 if __name__ == "__main__":
     unittest.main()

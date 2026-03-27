@@ -245,3 +245,53 @@ function displayUrl(url) {
         return value.length > 40 ? value.slice(0, 40) + "..." : value;
     }
 }
+
+function sourceHost(url) {
+    const value = String(url || "").trim();
+    if (!value)
+        return "otras";
+
+    try {
+        const parsed = new URL(value);
+        const host = parsed.hostname || parsed.host || value;
+        return host.replace(/^www\./, "") || "otras";
+    } catch (e) {
+        return displayUrl(value).split(" / ")[0] || "otras";
+    }
+}
+
+function groupSources(sources) {
+    const list = Array.isArray(sources) ? sources : [];
+    const groups = [];
+    const byHost = {};
+
+    for (let i = 0; i < list.length; ++i) {
+        const item = list[i] || {};
+        const host = sourceHost(item.url || "");
+        const dedupeKey = String(item.url || item.title || host);
+
+        if (!byHost[host]) {
+            byHost[host] = {
+                host: host,
+                items: [],
+                _seen: {},
+            };
+            groups.push(byHost[host]);
+        }
+
+        if (byHost[host]._seen[dedupeKey])
+            continue;
+
+        byHost[host]._seen[dedupeKey] = true;
+        byHost[host].items.push({
+            title: item.title || item.url || "Fuente",
+            url: item.url || "",
+            snippet: item.snippet || "",
+        });
+    }
+
+    for (let i = 0; i < groups.length; ++i)
+        delete groups[i]._seen;
+
+    return groups;
+}

@@ -8,7 +8,8 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string historyPath: Quickshell.env("HOME") + "/.config/quickshell/ai-history.json"
+    readonly property string historyPath: Quickshell.env("HOME") + "/.config/quickshell/data/state/ai-history.json"
+    readonly property string legacyHistoryPath: Quickshell.env("HOME") + "/.config/quickshell/ai-history.json"
 
     property var state: ({})
     property bool isLoading: true
@@ -74,7 +75,7 @@ Singleton {
 
     Process {
         id: loadProc
-        command: ["bash", "-c", "cat '" + root.historyPath + "' 2>/dev/null || echo '{}'"]
+        command: ["bash", "-c", "cat '" + root.historyPath + "' 2>/dev/null || cat '" + root.legacyHistoryPath + "' 2>/dev/null || echo '{}'"]
 
         property string buffer: ""
 

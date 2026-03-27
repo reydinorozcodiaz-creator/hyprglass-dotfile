@@ -196,7 +196,7 @@ Singleton {
         property double pausedAccumulatedMs: 0
 
         function startLifecycle() {
-            if (isUrgent) {
+            if (isUrgent && !forceAutoExpire) {
                 progress = 0.0;
                 remainingTime = totalTime;
                 lifecycleActive = false;
@@ -231,7 +231,7 @@ Singleton {
         }
 
         function refreshLifecycle(nowMs) {
-            if (!popup || !lifecycleActive || isUrgent || pausedAtMs !== 0)
+            if (!popup || !lifecycleActive || (isUrgent && !forceAutoExpire) || pausedAtMs !== 0)
                 return;
 
             const elapsed = nowMs - startedAtMs - pausedAccumulatedMs;
@@ -285,9 +285,12 @@ Singleton {
         readonly property string body: notification ? (notification.body || "") : ""
         readonly property string appIcon: notification ? (notification.appIcon || "") : ""
         readonly property string appName: notification ? (notification.appName || "System") : "System"
+        readonly property string appNameNormalized: appName.trim().toLowerCase()
         readonly property string image: notification ? (notification.image || "") : ""
         readonly property int urgency: notification ? notification.urgency : 0
         readonly property bool isUrgent: urgency === 2
+        // Battery alerts should look urgent, but still expire like normal popups.
+        readonly property bool forceAutoExpire: appNameNormalized === "battery"
         readonly property var actions: notification ? (notification.actions || []) : []
         readonly property bool hasActions: actions && actions.length > 0
 

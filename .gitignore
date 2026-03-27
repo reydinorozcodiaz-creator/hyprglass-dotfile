@@ -4,6 +4,8 @@
 
 # Local state
 .cache/
+install.log
+configs/config/gtk-3.0/bookmarks
 
 # Quickshell local runtime/state
 configs/config/quickshell/ai-cache.json

@@ -1,29 +1,13 @@
-#!/bin/bash
-# Theme Unifier Script
-# Unifies Qt and GTK themes for consistent appearance
+#!/usr/bin/env bash
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+set -euo pipefail
 
-# Configuration
-GTK_THEME="Sweet"
-ICON_THEME="BeautyLine"
-CURSOR_THEME="Sweet-cursors"
-CURSOR_SIZE="24"
-
-# Hyprland env injection (Hyprland already sources ~/.config/hypr/config/*)
-HYPR_CONFIG_DIR="$HOME/.config/hypr/config"
-HYPR_ENV_CONF="$HYPR_CONFIG_DIR/10-theme-unifier-env.conf"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/theme-lib.sh"
 
 KVANTUM_CONFIG_DIR="$HOME/.config/Kvantum"
 KVANTUM_CONF_FILE="$KVANTUM_CONFIG_DIR/kvantum.kvconfig"
-
-# Directories
 GTK3_CONFIG="$HOME/.config/gtk-3.0"
 GTK4_CONFIG="$HOME/.config/gtk-4.0"
 QT5CT_CONFIG="$HOME/.config/qt5ct"
@@ -31,74 +15,48 @@ QT6CT_CONFIG="$HOME/.config/qt6ct"
 GTKRC2="$HOME/.gtkrc-2.0"
 
 show_help() {
-    echo -e "${CYAN}Theme Unifier Script${NC}"
-    echo "===================="
-    echo
-    echo -e "${YELLOW}Usage:${NC} $0 [OPTION]"
-    echo
-    echo -e "${YELLOW}Options:${NC}"
-    echo -e "  ${GREEN}apply${NC}     Apply unified theme configuration (default)"
-    echo -e "  ${GREEN}status${NC}    Show current theme status"
-    echo -e "  ${GREEN}reset${NC}     Reset to default themes"
-    echo -e "  ${GREEN}help${NC}      Show this help"
-    echo
-    echo -e "${YELLOW}What this script does:${NC}"
-    echo "• Unifies Qt and GTK themes to use Adwaita-dark"
-    echo "• Sets consistent icon theme (Adwaita)"
-    echo "• Ensures cursor theme consistency (Sweet-cursors)"
-    echo "• Configures Qt to follow GTK theme"
-    echo
+    cat <<'EOF'
+theme-unifier.sh apply|status|reset|help
+EOF
 }
 
 detect_qt_platformtheme() {
-    # Prefer Qt6 if available, otherwise Qt5.
-    # We detect by plugin file presence because the qt5ct/qt6ct binaries may not be installed.
-    local qt6_plugins=(
+    local -a qt6_plugins=(
         "/usr/lib/qt6/plugins/platformthemes/libqt6ct.so"
         "/usr/lib/qt6/plugins/platformthemes/qt6ct.so"
         "/usr/lib/qt6/plugins/platformthemes/libqt6ct.so.1"
     )
-    local qt5_plugins=(
+    local -a qt5_plugins=(
         "/usr/lib/qt/plugins/platformthemes/libqt5ct.so"
         "/usr/lib/qt/plugins/platformthemes/qt5ct.so"
         "/usr/lib/qt5/plugins/platformthemes/libqt5ct.so"
         "/usr/lib/qt5/plugins/platformthemes/qt5ct.so"
         "/usr/lib/x86_64-linux-gnu/qt5/plugins/platformthemes/libqt5ct.so"
     )
-
-    # Fallback: GTK3 platform theme (qgtk3) lets Qt apps follow GTK settings
-    local gtk3_qt6=(
+    local -a gtk3_plugins=(
         "/usr/lib/qt6/plugins/platformthemes/libqgtk3.so"
         "/usr/lib/qt6/plugins/platformthemes/qgtk3.so"
-    )
-    local gtk3_qt5=(
         "/usr/lib/qt/plugins/platformthemes/libqgtk3.so"
         "/usr/lib/qt/plugins/platformthemes/qgtk3.so"
         "/usr/lib/qt5/plugins/platformthemes/libqgtk3.so"
         "/usr/lib/qt5/plugins/platformthemes/qgtk3.so"
         "/usr/lib/x86_64-linux-gnu/qt5/plugins/platformthemes/libqgtk3.so"
     )
+    local plugin
 
-    for p in "${qt6_plugins[@]}"; do
-        [[ -f "$p" ]] && { echo "qt6ct"; return 0; }
+    for plugin in "${qt6_plugins[@]}"; do
+        [[ -f "$plugin" ]] && { echo "qt6ct"; return 0; }
     done
-    for p in "${qt5_plugins[@]}"; do
-        [[ -f "$p" ]] && { echo "qt5ct"; return 0; }
+    for plugin in "${qt5_plugins[@]}"; do
+        [[ -f "$plugin" ]] && { echo "qt5ct"; return 0; }
     done
-
-    for p in "${gtk3_qt6[@]}"; do
-        [[ -f "$p" ]] && { echo "gtk3"; return 0; }
+    for plugin in "${gtk3_plugins[@]}"; do
+        [[ -f "$plugin" ]] && { echo "gtk3"; return 0; }
     done
-    for p in "${gtk3_qt5[@]}"; do
-        [[ -f "$p" ]] && { echo "gtk3"; return 0; }
-    done
-
-    echo ""
 }
 
 detect_qt_style_override() {
-    # Prefer Kvantum if its Qt style plugin exists.
-    local kvantum_plugins=(
+    local -a kvantum_plugins=(
         "/usr/lib/qt6/plugins/styles/libkvantum.so"
         "/usr/lib/qt6/plugins/styles/kvantum.so"
         "/usr/lib/qt/plugins/styles/libkvantum.so"
@@ -106,43 +64,39 @@ detect_qt_style_override() {
         "/usr/lib/qt5/plugins/styles/libkvantum.so"
         "/usr/lib/qt5/plugins/styles/kvantum.so"
     )
-    local breeze_plugins=(
+    local -a breeze_plugins=(
         "/usr/lib/qt6/plugins/styles/breeze6.so"
         "/usr/lib/qt/plugins/styles/breeze.so"
     )
+    local plugin
 
-    local p
-    for p in "${kvantum_plugins[@]}"; do
-        [[ -f "$p" ]] && { echo "kvantum"; return 0; }
+    for plugin in "${kvantum_plugins[@]}"; do
+        [[ -f "$plugin" ]] && { echo "kvantum"; return 0; }
     done
-    for p in "${breeze_plugins[@]}"; do
-        [[ -f "$p" ]] && { echo "breeze"; return 0; }
+    for plugin in "${breeze_plugins[@]}"; do
+        [[ -f "$plugin" ]] && { echo "breeze"; return 0; }
     done
-
-    echo ""
 }
 
 ensure_kvantum_theme() {
-    # If Sweet Kvantum theme exists, select it.
-    local sweet_kvconfig="/usr/share/Kvantum/Sweet/Sweet.kvconfig"
-    mkdir -p "$KVANTUM_CONFIG_DIR"
+    local kvantum_theme="/usr/share/Kvantum/Sweet/Sweet.kvconfig"
 
-    if [[ -f "$sweet_kvconfig" ]]; then
-        cat > "$KVANTUM_CONF_FILE" << EOF
+    [[ -f "$kvantum_theme" ]] || return 0
+
+    mkdir -p "$KVANTUM_CONFIG_DIR"
+    cat > "$KVANTUM_CONF_FILE" <<EOF
 [General]
 theme=Sweet
 EOF
-    fi
 }
 
 write_hypr_env_conf() {
-    mkdir -p "$HYPR_CONFIG_DIR"
+    local platformtheme=""
+    local style_override=""
 
-    local platformtheme
-    platformtheme="$(detect_qt_platformtheme)"
-
-    local style_override
-    style_override="$(detect_qt_style_override)"
+    mkdir -p "$(dirname "$HYPR_THEME_ENV_CONF")"
+    platformtheme="$(detect_qt_platformtheme || true)"
+    style_override="$(detect_qt_style_override || true)"
 
     if [[ "$style_override" == "kvantum" ]]; then
         ensure_kvantum_theme
@@ -150,42 +104,25 @@ write_hypr_env_conf() {
 
     {
         echo "# Generated by ~/.config/hypr/scripts/system/theme-unifier.sh"
-        echo "# Restart Hyprland (or re-login) for env changes to take effect."
         echo "env = XCURSOR_THEME,$CURSOR_THEME"
-        echo "env = XCURSOR_SIZE,$CURSOR_SIZE"
-
+        echo "env = QT_CURSOR_THEME,$CURSOR_THEME"
+        echo "env = HYPRCURSOR_THEME,$CURSOR_THEME"
+        echo "envd = XCURSOR_SIZE,$CURSOR_SIZE"
+        echo "envd = QT_CURSOR_SIZE,$CURSOR_SIZE"
+        echo "envd = HYPRCURSOR_SIZE,$CURSOR_SIZE"
         if [[ -n "$platformtheme" ]]; then
             echo "env = QT_QPA_PLATFORMTHEME,$platformtheme"
-        else
-            echo "# Qt platformtheme plugin not detected (qt5ct/qt6ct)."
-            echo "# On Arch/Garuda you likely want: sudo pacman -S qt6ct qt5ct"
-            echo "# Then re-run theme-unifier.sh apply and restart Hyprland."
         fi
-
-        # Optional: force a Qt style (helps tools like fastfetch and ensures Kvantum is used).
         if [[ -n "$style_override" ]]; then
             echo "env = QT_STYLE_OVERRIDE,$style_override"
         fi
-    } > "$HYPR_ENV_CONF"
-
-    if [[ -n "$platformtheme" ]]; then
-        export QT_QPA_PLATFORMTHEME="$platformtheme"
-    fi
-    if [[ -n "$style_override" ]]; then
-        export QT_STYLE_OVERRIDE="$style_override"
-    fi
-    export XCURSOR_THEME="Sweet-cursors"
-    export XCURSOR_SIZE="$CURSOR_SIZE"
+    } > "$HYPR_THEME_ENV_CONF"
 }
 
 create_gtk_configs() {
-    echo -e "${BLUE}📝 Creating GTK configuration files...${NC}"
-    
-    # Create GTK3 config directory
-    mkdir -p "$GTK3_CONFIG"
-    
-    # Create GTK3 settings.ini
-    cat > "$GTK3_CONFIG/settings.ini" << EOF
+    mkdir -p "$GTK3_CONFIG" "$GTK4_CONFIG"
+
+    cat > "$GTK3_CONFIG/settings.ini" <<EOF
 [Settings]
 gtk-theme-name=$GTK_THEME
 gtk-icon-theme-name=$ICON_THEME
@@ -197,12 +134,8 @@ gtk-decoration-layout=:minimize,maximize,close
 gtk-enable-animations=true
 gtk-primary-button-warps-slider=false
 EOF
-    
-    # Create GTK4 config directory
-    mkdir -p "$GTK4_CONFIG"
-    
-    # Create GTK4 settings.ini
-    cat > "$GTK4_CONFIG/settings.ini" << EOF
+
+    cat > "$GTK4_CONFIG/settings.ini" <<EOF
 [Settings]
 gtk-theme-name=$GTK_THEME
 gtk-icon-theme-name=$ICON_THEME
@@ -214,32 +147,25 @@ gtk-decoration-layout=:minimize,maximize,close
 gtk-enable-animations=true
 gtk-primary-button-warps-slider=false
 EOF
-    
-    # Create GTK2 config
-    cat > "$GTKRC2" << EOF
+
+    cat > "$GTKRC2" <<EOF
 gtk-theme-name="$GTK_THEME"
 gtk-icon-theme-name="$ICON_THEME"
 gtk-cursor-theme-name="$CURSOR_THEME"
 gtk-cursor-theme-size=$CURSOR_SIZE
 gtk-font-name="Cantarell 11"
 EOF
-    
-    echo -e "${GREEN}✅ GTK configuration files created${NC}"
 }
 
 create_qt_configs() {
-    echo -e "${BLUE}📝 Creating Qt configuration files...${NC}"
+    local qt_style=""
 
-    local qt_style
-    qt_style="$(detect_qt_style_override)"
-    [[ -z "$qt_style" ]] && qt_style="gtk2"
-    
-    # Create Qt5ct config directory
-    mkdir -p "$QT5CT_CONFIG"
-    
-    # Only create Qt5ct config if it doesn't already exist (preserve user customizations)
-    if [[ ! -f "$QT5CT_CONFIG/qt5ct.conf" ]]; then
-    cat > "$QT5CT_CONFIG/qt5ct.conf" << EOF
+    qt_style="$(detect_qt_style_override || true)"
+    [[ -n "$qt_style" ]] || qt_style="gtk2"
+
+    mkdir -p "$QT5CT_CONFIG" "$QT6CT_CONFIG"
+
+    cat > "$QT5CT_CONFIG/qt5ct.conf" <<EOF
 [Appearance]
 color_scheme_path=
 custom_palette=false
@@ -250,7 +176,6 @@ style=$qt_style
 [Fonts]
 fixed=Noto Sans Mono,10,-1,5,50,0,0,0,0,0
 general=Noto Sans,10,-1,5,50,0,0,0,0,0
-
 
 [Interface]
 activate_item_on_single_click=1
@@ -274,17 +199,8 @@ geometry=@ByteArray()
 force_raster_widgets=1
 ignored_applications=@Invalid()
 EOF
-        echo -e "${GREEN}  ✅ Qt5ct config created${NC}"
-    else
-        echo -e "${YELLOW}  ⏭️  Qt5ct config already exists, skipping (use 'reset' to regenerate)${NC}"
-    fi
-    
-    # Create Qt6ct config directory
-    mkdir -p "$QT6CT_CONFIG"
-    
-    # Only create Qt6ct config if it doesn't already exist (preserve user customizations)
-    if [[ ! -f "$QT6CT_CONFIG/qt6ct.conf" ]]; then
-    cat > "$QT6CT_CONFIG/qt6ct.conf" << EOF
+
+    cat > "$QT6CT_CONFIG/qt6ct.conf" <<EOF
 [Appearance]
 color_scheme_path=
 custom_palette=false
@@ -295,7 +211,6 @@ style=$qt_style
 [Fonts]
 fixed=Noto Sans Mono,10,-1,5,50,0,0,0,0,0
 general=Noto Sans,10,-1,5,50,0,0,0,0,0
-
 
 [Interface]
 activate_item_on_single_click=1
@@ -319,156 +234,85 @@ geometry=@ByteArray()
 force_raster_widgets=1
 ignored_applications=@Invalid()
 EOF
-        echo -e "${GREEN}  ✅ Qt6ct config created${NC}"
-    else
-        echo -e "${YELLOW}  ⏭️  Qt6ct config already exists, skipping (use 'reset' to regenerate)${NC}"
-    fi
-    
-    echo -e "${GREEN}✅ Qt configuration files created${NC}"
 }
 
 apply_gsettings() {
-    echo -e "${BLUE}🔄 Applying GTK settings via gsettings...${NC}"
-    
-    if command -v gsettings >/dev/null 2>&1; then
-        # GTK theme settings
-        gsettings set org.gnome.desktop.interface gtk-theme "$GTK_THEME"
-        gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME"
-        gsettings set org.gnome.desktop.interface cursor-theme "$CURSOR_THEME"
-        gsettings set org.gnome.desktop.interface cursor-size "$CURSOR_SIZE"
-        
-        # Font settings
-        gsettings set org.gnome.desktop.interface font-name "Cantarell 11"
-        gsettings set org.gnome.desktop.interface monospace-font-name "Monospace 10"
-        
-        # Appearance settings
-        gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
-        gsettings set org.gnome.desktop.interface enable-animations true
-        
-        echo -e "${GREEN}✅ GTK settings applied via gsettings${NC}"
-    else
-        echo -e "${YELLOW}⚠️  gsettings not available${NC}"
-    fi
+    command -v gsettings >/dev/null 2>&1 || return 0
+
+    gsettings set org.gnome.desktop.interface gtk-theme "$GTK_THEME"
+    gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME"
+    gsettings set org.gnome.desktop.interface cursor-theme "$CURSOR_THEME"
+    gsettings set org.gnome.desktop.interface cursor-size "$CURSOR_SIZE"
+    gsettings set org.gnome.desktop.interface font-name "Cantarell 11"
+    gsettings set org.gnome.desktop.interface monospace-font-name "Monospace 10"
+    gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+    gsettings set org.gnome.desktop.interface enable-animations true
 }
 
-apply_unified_theme() {
-    echo -e "${CYAN}🎨 Applying Unified Theme Configuration${NC}"
-    echo "======================================"
-    echo
-    echo -e "${BLUE}Target Configuration:${NC}"
-    echo -e "  Theme: ${GREEN}$GTK_THEME${NC} (both Qt and GTK)"
-    echo -e "  Icons: ${GREEN}$ICON_THEME${NC} (both Qt and GTK)"
-    echo -e "  Cursor: ${GREEN}$CURSOR_THEME${NC}"
-    echo
-    
-    # Create configuration files
+apply_runtime_hypr_env() {
+    command -v hyprctl >/dev/null 2>&1 || return 0
+    [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 0
+
+    hyprctl keyword env "XCURSOR_THEME,$CURSOR_THEME" >/dev/null 2>&1 || true
+    hyprctl keyword env "QT_CURSOR_THEME,$CURSOR_THEME" >/dev/null 2>&1 || true
+    hyprctl keyword env "HYPRCURSOR_THEME,$CURSOR_THEME" >/dev/null 2>&1 || true
+    hyprctl keyword env "XCURSOR_SIZE,$CURSOR_SIZE" >/dev/null 2>&1 || true
+    hyprctl keyword env "QT_CURSOR_SIZE,$CURSOR_SIZE" >/dev/null 2>&1 || true
+    hyprctl keyword env "HYPRCURSOR_SIZE,$CURSOR_SIZE" >/dev/null 2>&1 || true
+}
+
+apply_theme() {
+    load_theme_state
     create_gtk_configs
     create_qt_configs
     apply_gsettings
-
-    # Ensure Hyprland session gets the required env vars for Qt theming
     write_hypr_env_conf
-    
-    # Don't force QT_STYLE_OVERRIDE here; let qt5ct/qt6ct (if installed) control style.
-    export GTK_THEME="Sweet"
-    
-    echo
-    echo -e "${GREEN}✅ Unified theme configuration applied!${NC}"
-    echo
-    echo -e "${YELLOW}📋 Next steps:${NC}"
-    echo -e "  1. Restart applications to see changes"
-    echo -e "  2. Or restart Hyprland: ${CYAN}hyprctl dispatch exit${NC}"
-    echo -e "  3. Qt apps will now follow GTK theme"
-    echo
+    apply_runtime_hypr_env
 }
 
-show_theme_status() {
-    echo -e "${CYAN}🎨 Current Theme Status${NC}"
-    echo "======================="
-    echo
-    
-    # Environment variables
-    echo -e "${YELLOW}Environment Variables:${NC}"
-    echo -e "  GTK_THEME: ${GREEN}${GTK_THEME:-not set}${NC}"
-    echo -e "  QT_STYLE_OVERRIDE: ${GREEN}${QT_STYLE_OVERRIDE:-not set}${NC}"
-    echo -e "  QT_QPA_PLATFORMTHEME: ${GREEN}${QT_QPA_PLATFORMTHEME:-not set}${NC}"
-    echo
-    
-    # GTK settings
-    echo -e "${YELLOW}GTK Settings (gsettings):${NC}"
-    if command -v gsettings >/dev/null 2>&1; then
-        local gtk_theme=$(gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null | tr -d "'")
-        local icon_theme=$(gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | tr -d "'")
-        local cursor_theme=$(gsettings get org.gnome.desktop.interface cursor-theme 2>/dev/null | tr -d "'")
-        
-        echo -e "  GTK Theme: ${GREEN}$gtk_theme${NC}"
-        echo -e "  Icon Theme: ${GREEN}$icon_theme${NC}"
-        echo -e "  Cursor Theme: ${GREEN}$cursor_theme${NC}"
-    else
-        echo -e "  ${YELLOW}⚠️  gsettings not available${NC}"
-    fi
-    echo
-    
-    # Configuration files
-    echo -e "${YELLOW}Configuration Files:${NC}"
-    local configs=(
-        "$GTK3_CONFIG/settings.ini:GTK3"
-        "$GTK4_CONFIG/settings.ini:GTK4"
-        "$GTKRC2:GTK2"
-        "$QT5CT_CONFIG/qt5ct.conf:Qt5ct"
-        "$QT6CT_CONFIG/qt6ct.conf:Qt6ct"
-    )
-    
-    for config in "${configs[@]}"; do
-        local file="${config%:*}"
-        local name="${config#*:}"
-        
-        if [[ -f "$file" ]]; then
-            echo -e "  ${GREEN}✅${NC} $name config exists"
-        else
-            echo -e "  ${RED}❌${NC} $name config missing"
-        fi
-    done
-    echo
+show_status() {
+    local platformtheme=""
+    local style_override=""
+
+    load_theme_state
+    platformtheme="$(detect_qt_platformtheme || true)"
+    style_override="$(detect_qt_style_override || true)"
+
+    cat <<EOF
+Theme state file: $THEME_STATE_FILE
+Hypr env file: $HYPR_THEME_ENV_CONF
+GTK_THEME=$GTK_THEME
+ICON_THEME=$ICON_THEME
+CURSOR_THEME=$CURSOR_THEME
+CURSOR_SIZE=$CURSOR_SIZE
+QT_QPA_PLATFORMTHEME=${platformtheme:-unset}
+QT_STYLE_OVERRIDE=${style_override:-unset}
+EOF
 }
 
-reset_themes() {
-    echo -e "${BLUE}🔄 Resetting to default themes...${NC}"
-    
-    # Remove custom configurations
-    rm -f "$GTK3_CONFIG/settings.ini" 2>/dev/null
-    rm -f "$GTK4_CONFIG/settings.ini" 2>/dev/null
-    rm -f "$GTKRC2" 2>/dev/null
-    rm -f "$QT5CT_CONFIG/qt5ct.conf" 2>/dev/null
-    rm -f "$QT6CT_CONFIG/qt6ct.conf" 2>/dev/null
-    
-    # Reset gsettings
-    if command -v gsettings >/dev/null 2>&1; then
-        gsettings reset org.gnome.desktop.interface gtk-theme
-        gsettings reset org.gnome.desktop.interface icon-theme
-        gsettings reset org.gnome.desktop.interface cursor-theme
-    fi
-    
-    echo -e "${GREEN}✅ Themes reset to defaults${NC}"
+reset_theme() {
+    save_theme_state \
+        "$THEME_DEFAULT_GTK" \
+        "$THEME_DEFAULT_ICONS" \
+        "$THEME_DEFAULT_CURSOR" \
+        "$THEME_DEFAULT_CURSOR_SIZE"
+    apply_theme
 }
 
-# Main execution
 case "${1:-apply}" in
     apply)
-        apply_unified_theme
+        apply_theme
         ;;
     status)
-        show_theme_status
+        show_status
         ;;
     reset)
-        reset_themes
+        reset_theme
         ;;
     help|--help|-h)
         show_help
         ;;
     *)
-        echo -e "${RED}❌ Unknown option: $1${NC}"
-        echo
         show_help
         exit 1
         ;;

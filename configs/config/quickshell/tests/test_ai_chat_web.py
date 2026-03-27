@@ -17,6 +17,18 @@ class AiChatWebHeuristicsTests(unittest.TestCase):
         self.assertFalse(ai_chat.query_needs_live_web("explica este codigo qml"))
         self.assertFalse(ai_chat.query_needs_live_web("como mejorar esta arquitectura"))
 
+    def test_small_talk_does_not_trigger_web_tools(self):
+        self.assertFalse(ai_chat.query_should_use_web_tools("hola"))
+        self.assertFalse(ai_chat.query_should_use_web_tools("gracias"))
+
+    def test_explicit_web_request_triggers_web_tools(self):
+        self.assertTrue(ai_chat.query_should_use_web_tools("busca en internet mejores teclados"))
+        self.assertTrue(ai_chat.query_should_use_web_tools("dame fuentes sobre Wayland"))
+
+    def test_live_time_query_triggers_web_tools(self):
+        self.assertTrue(ai_chat.query_needs_live_time("que hora es en bogota"))
+        self.assertTrue(ai_chat.query_should_use_web_tools("que hora es en bogota"))
+
     def test_prepend_live_web_instruction_only_when_context_used(self):
         messages = [{"role": "user", "content": "hola"}]
         untouched = ai_chat.prepend_live_web_instruction(messages, True, {"used": False})

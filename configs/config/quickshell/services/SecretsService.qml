@@ -8,7 +8,8 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string secretsPath: Quickshell.env("HOME") + "/.config/quickshell/secrets.json"
+    readonly property string secretsPath: Quickshell.env("HOME") + "/.config/quickshell/data/private/secrets.json"
+    readonly property string legacySecretsPath: Quickshell.env("HOME") + "/.config/quickshell/secrets.json"
 
     property var state: ({})
     property bool isLoading: true
@@ -106,7 +107,7 @@ Singleton {
 
     Process {
         id: loadProc
-        command: ["bash", "-c", "cat '" + root.secretsPath + "' 2>/dev/null || echo '{}'"]
+        command: ["bash", "-c", "cat '" + root.secretsPath + "' 2>/dev/null || cat '" + root.legacySecretsPath + "' 2>/dev/null || echo '{}'"]
 
         property string buffer: ""
 

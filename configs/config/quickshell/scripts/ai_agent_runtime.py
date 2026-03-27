@@ -391,7 +391,7 @@ class AgentRuntime:
         )
         self.installer = PackageInstaller()
         self.state_path = Path(
-            shell_readable_path("~/.config/quickshell/ai_agent_state.json")
+            shell_readable_path("~/.config/quickshell/data/state/assistant/ai_agent_state.json")
         )
         self.state = self._load_state()
         self.tools = {

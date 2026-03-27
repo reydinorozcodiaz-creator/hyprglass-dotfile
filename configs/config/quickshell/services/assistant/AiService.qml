@@ -121,6 +121,7 @@ Singleton {
     readonly property bool isLoading: chatProc.running
     readonly property bool isFetchingModels: modelsProc.running
     readonly property bool isInspectingAttachment: inspectProc.running
+    readonly property bool isFetchingMcpTools: mcpToolsProc.running
 
     property bool stoppedByUser: false
     property string lastError: ""
@@ -130,6 +131,8 @@ Singleton {
 
     property var availableModels: AiCacheService.get("availableModels", [])
     property string modelsError: ""
+    property var availableMcpTools: []
+    property string mcpToolsError: ""
 
     property var messages: AiHistoryService.get("messages", [])
     property var pendingAttachments: []
@@ -146,9 +149,11 @@ Singleton {
     property string _pendingPayload: ""
     property string _pendingModelsPayload: ""
     property string _pendingInspectPayload: ""
+    property string _pendingMcpToolsPayload: ""
     property string _chatStderr: ""
     property string _modelsStderr: ""
     property string _inspectStderr: ""
+    property string _mcpToolsStderr: ""
     property bool _chatFinished: false
     property bool _chatHadSuccess: false
     property bool _messagesDirty: false
@@ -190,6 +195,7 @@ Singleton {
         settingsOpen = true;
         windowVisible = true;
         ensureModelsLoaded();
+        ensureMcpToolsLoaded();
     }
 
     function closeSettings() {
@@ -202,6 +208,25 @@ Singleton {
 
     function orbitModeLabel(mode) {
         return AiSessionUtils.orbitModeLabel(mode);
+    }
+
+    function providerLabel(providerId) {
+        if (providerId === "copilot")
+            return "GitHub Copilot";
+        if (providerId === "zeroclaw")
+            return "ZeroClaw";
+        if (!providerId || providerId.length === 0)
+            return "AI";
+        return providerId.charAt(0).toUpperCase() + providerId.slice(1);
+    }
+
+    function quoteText(text) {
+        const cleaned = String(text || "").trim();
+        if (cleaned === "")
+            return "";
+
+        const quoted = cleaned.split("\n").map(line => line === "" ? ">" : "> " + line).join("\n");
+        return quoted;
     }
 
     function orbitPlaceholder() {
@@ -726,6 +751,24 @@ Singleton {
         modelsProc.running = true;
     }
 
+    function ensureMcpToolsLoaded(force) {
+        force = force === undefined ? false : force;
+        if (mcpToolsProc.running)
+            return;
+        if (!force && availableMcpTools.length > 0 && mcpToolsError === "")
+            return;
+
+        mcpToolsError = "";
+        root._pendingMcpToolsPayload = JSON.stringify({
+            command: "list_mcp_tools",
+        });
+        mcpToolsProc.running = true;
+    }
+
+    function fetchMcpTools() {
+        ensureMcpToolsLoaded(true);
+    }
+
     function fetchModels() {
         const key = _credentialForProvider(provider);
         if (!key) {
@@ -828,6 +871,12 @@ Singleton {
         }
         currentAssistantContent = "";
         lastError = errorText;
+        if ((errorText || "").trim() !== "") {
+            _appendOrbitMessage(errorText, "error_notice", {
+                title: "Error de Orbit",
+                icon: "󰅙",
+            });
+        }
     }
 
     function _handleChatLine(data) {
@@ -908,14 +957,18 @@ Singleton {
             _recomputeContextTokens();
             if ((windowVisible || settingsOpen) && needsSetup)
                 openSettings();
-            else if (windowVisible || showSettings)
+            else if (windowVisible || showSettings) {
                 ensureModelsLoaded();
+                ensureMcpToolsLoaded();
+            }
         }
     }
     onWindowVisibleChanged: {
         if (!windowVisible) {
             flushPendingPersistence();
             closeSettings();
+        } else if (showSettings) {
+            ensureMcpToolsLoaded();
         }
     }
 
@@ -1090,6 +1143,43 @@ Singleton {
                 _recomputeContextTokens();
             } catch (e) {
                 root.attachmentsError = root._inspectStderr.trim() || "No se pudo interpretar la vista previa del adjunto.";
+            }
+        }
+    }
+
+    Process {
+        id: mcpToolsProc
+        command: ["python3", Qt.resolvedUrl("../../scripts/ai/ai_chat.py").toString().replace("file://", "")]
+        stdinEnabled: true
+        running: false
+        stdout: StdioCollector { id: mcpToolsStdout; waitForEnd: true }
+        stderr: SplitParser { onRead: data => root._mcpToolsStderr += data + "\n" }
+
+        onStarted: {
+            root._mcpToolsStderr = "";
+            mcpToolsProc.write(root._pendingMcpToolsPayload + "\n");
+        }
+
+        onExited: {
+            const raw = mcpToolsStdout.text.trim();
+            if (!raw) {
+                root.mcpToolsError = root._mcpToolsStderr.trim() || "No hubo respuesta del servidor MCP.";
+                return;
+            }
+
+            try {
+                const resp = JSON.parse(raw);
+                if (!resp.ok) {
+                    root.availableMcpTools = [];
+                    root.mcpToolsError = resp.error || "No se pudieron listar las herramientas MCP.";
+                    return;
+                }
+
+                root.availableMcpTools = resp.tools || [];
+                root.mcpToolsError = "";
+            } catch (e) {
+                root.availableMcpTools = [];
+                root.mcpToolsError = root._mcpToolsStderr.trim() || "No se pudo interpretar la respuesta de MCP.";
             }
         }
     }

@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-STATE_FILE = os.path.expanduser("~/.config/quickshell/state.json")
+STATE_FILE = os.path.expanduser("~/.config/quickshell/data/state/state.json")
 
 def load_pinned():
     try:

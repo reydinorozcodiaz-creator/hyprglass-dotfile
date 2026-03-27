@@ -68,16 +68,6 @@ QsPopupWindow {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
-    function providerLabel(providerId) {
-        if (providerId === "copilot")
-            return "GitHub Copilot";
-        if (providerId === "zeroclaw")
-            return "ZeroClaw";
-        if (!providerId || providerId.length === 0)
-            return "AI";
-        return providerId.charAt(0).toUpperCase() + providerId.slice(1);
-    }
-
     function modelLabelForMessage(message) {
         return message.model || AiService.model;
     }
@@ -93,11 +83,10 @@ QsPopupWindow {
     }
 
     function quoteMessage(text) {
-        const cleaned = (text || "").trim();
-        if (cleaned === "")
+        const quoted = AiService.quoteText(text);
+        if (quoted === "")
             return;
 
-        const quoted = cleaned.split("\n").map(line => line === "" ? ">" : "> " + line).join("\n");
         const next = inputField.text.trim() === ""
             ? quoted + "\n\n"
             : inputField.text + "\n\n" + quoted + "\n\n";
@@ -683,6 +672,159 @@ QsPopupWindow {
                 }
             }
 
+            ColumnLayout {
+                Layout.fillWidth: true; spacing: 10
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text: "HERRAMIENTAS MCP DETECTADAS"; font.family: Config.font; font.pixelSize: 10
+                        font.bold: true; color: Config.subtextColor; opacity: 0.45
+                    }
+                    Item { Layout.fillWidth: true }
+                    Spinner {
+                        running: AiService.isFetchingMcpTools; size: Config.fontSizeSmall
+                        color: Config.subtextColor; visible: AiService.isFetchingMcpTools
+                    }
+                    Text {
+                        text: "Recargar"
+                        font.family: Config.font; font.pixelSize: Config.fontSizeSmall
+                        color: Config.accentColor; opacity: 0.78
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: AiService.fetchMcpTools()
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: mcpToolsCol.implicitHeight + 20
+                    radius: Config.radius
+                    color: Config.surface0Color
+                    border.width: 1
+                    border.color: Qt.alpha(Config.surface2Color, 0.4)
+
+                    ColumnLayout {
+                        id: mcpToolsCol
+                        anchors { fill: parent; margins: 10 }
+                        spacing: 8
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: AiService.availableMcpTools.length > 0
+                                ? AiService.availableMcpTools.length + " tools MCP disponibles ahora mismo."
+                                : "Orbit consulta el servidor MCP local y muestra aqui lo que realmente expone."
+                            font.family: Config.font; font.pixelSize: Config.fontSizeSmall - 1
+                            color: Config.subtextColor
+                            opacity: 0.72
+                            wrapMode: Text.Wrap
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: AiService.mcpToolsError !== ""
+                            text: "⚠  " + AiService.mcpToolsError
+                            font.family: Config.font; font.pixelSize: Config.fontSizeSmall
+                            color: Config.errorColor
+                            wrapMode: Text.Wrap
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: !AiService.isFetchingMcpTools
+                                && AiService.mcpToolsError === ""
+                                && AiService.availableMcpTools.length === 0
+                            text: "No se detectaron herramientas MCP."
+                            font.family: Config.font; font.pixelSize: Config.fontSizeSmall
+                            color: Config.subtextColor
+                            opacity: 0.7
+                            wrapMode: Text.Wrap
+                        }
+
+                        Repeater {
+                            model: AiService.availableMcpTools
+                            delegate: Rectangle {
+                                id: toolCard
+                                required property var modelData
+                                Layout.fillWidth: true
+                                implicitHeight: toolInfoCol.implicitHeight + 18
+                                radius: Config.radius
+                                color: Qt.alpha(Config.surface1Color, 0.72)
+                                border.width: 1
+                                border.color: Qt.alpha(Config.surface2Color, 0.35)
+
+                                ColumnLayout {
+                                    id: toolInfoCol
+                                    anchors { fill: parent; margins: 9 }
+                                    spacing: 5
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Rectangle {
+                                            radius: 8
+                                            color: Qt.alpha(Config.accentColor, 0.14)
+                                            border.width: 1
+                                            border.color: Qt.alpha(Config.accentColor, 0.28)
+                                            implicitWidth: toolName.implicitWidth + 14
+                                            implicitHeight: toolName.implicitHeight + 8
+
+                                            Text {
+                                                id: toolName
+                                                anchors.centerIn: parent
+                                                text: toolCard.modelData.name || "tool"
+                                                font.family: Config.font
+                                                font.pixelSize: Config.fontSizeSmall - 1
+                                                font.bold: true
+                                                color: Config.accentColor
+                                            }
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                        Text {
+                                            text: {
+                                                const schema = toolCard.modelData.inputSchema || {};
+                                                const props = schema.properties || {};
+                                                const count = Object.keys(props).length;
+                                                return count > 0 ? count + " args" : "sin args";
+                                            }
+                                            font.family: Config.font
+                                            font.pixelSize: Config.fontSizeSmall - 1
+                                            color: Config.subtextColor
+                                            opacity: 0.55
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: toolCard.modelData.description || "Sin descripcion."
+                                        font.family: Config.font
+                                        font.pixelSize: Config.fontSizeSmall
+                                        color: Config.textColor
+                                        wrapMode: Text.Wrap
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: {
+                                            const schema = toolCard.modelData.inputSchema || {};
+                                            const required = schema.required || [];
+                                            return required.length > 0
+                                                ? "Requeridos: " + required.join(", ")
+                                                : "Sin parametros obligatorios.";
+                                        }
+                                        font.family: Config.font
+                                        font.pixelSize: Config.fontSizeSmall - 1
+                                        color: Config.subtextColor
+                                        opacity: 0.68
+                                        wrapMode: Text.Wrap
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // ── Save / Start button ───────────────────────────────────────
             Rectangle {
                 Layout.fillWidth: true; Layout.bottomMargin: 6; height: 46; radius: Config.radius
@@ -1033,6 +1175,7 @@ QsPopupWindow {
                 readonly property string messageType: modelData.messageType || (isUser ? "user" : "assistant_text")
                 readonly property bool isActionResult: messageType === "action_result"
                 readonly property bool isSystemNotice: messageType === "system_notice"
+                readonly property bool isErrorNotice: messageType === "error_notice"
                 readonly property string assistantText: String(modelData.content || "")
                 readonly property bool hasAssistantContent: assistantText.replace(/\s+/g, "") !== ""
                 readonly property bool shouldShowAssistantCard: hasAssistantContent
@@ -1222,19 +1365,21 @@ QsPopupWindow {
                             radius: 14
                             color: msgItem.isActionResult
                                 ? Qt.alpha(Config.successColor, 0.12)
-                                : (msgItem.isSystemNotice
+                                : (msgItem.isErrorNotice
+                                    ? Qt.alpha(Config.errorColor, 0.12)
+                                    : (msgItem.isSystemNotice
                                     ? Qt.alpha(Config.warningColor, 0.12)
-                                    : Qt.alpha(Config.accentColor, 0.12))
+                                    : Qt.alpha(Config.accentColor, 0.12)))
 
                             Text {
                                 anchors.centerIn: parent
                                 text: msgItem.modelData.icon
-                                    || (msgItem.isActionResult ? "󰐕" : (msgItem.isSystemNotice ? "󰋼" : "󱜚"))
+                                    || (msgItem.isActionResult ? "󰐕" : (msgItem.isErrorNotice ? "󰅙" : (msgItem.isSystemNotice ? "󰋼" : "󱜚")))
                                 font.family: Config.font
                                 font.pixelSize: 13
                                 color: msgItem.isActionResult
                                     ? Config.successColor
-                                    : (msgItem.isSystemNotice ? Config.warningColor : Config.accentColor)
+                                    : (msgItem.isErrorNotice ? Config.errorColor : (msgItem.isSystemNotice ? Config.warningColor : Config.accentColor))
                             }
                         }
 
@@ -1250,20 +1395,23 @@ QsPopupWindow {
                                     text: msgItem.modelData.title
                                         || (msgItem.isActionResult
                                             ? "Accion local"
-                                            : (msgItem.isSystemNotice
-                                                ? "Orbit"
-                                                : root.providerLabel(msgItem.modelData.provider || AiService.provider)))
+                                            : (msgItem.isErrorNotice
+                                                ? "Error de Orbit"
+                                                : (msgItem.isSystemNotice
+                                                    ? "Orbit"
+                                                    : AiService.providerLabel(msgItem.modelData.provider || AiService.provider))))
                                     font.family: Config.font
                                     font.pixelSize: 11
                                     font.bold: true
                                     color: msgItem.isActionResult
                                         ? Config.successColor
-                                        : (msgItem.isSystemNotice ? Config.warningColor : Config.accentColor)
+                                        : (msgItem.isErrorNotice ? Config.errorColor : (msgItem.isSystemNotice ? Config.warningColor : Config.accentColor))
                                     opacity: 0.85
                                 }
 
                                 Text {
                                     text: msgItem.isActionResult || msgItem.isSystemNotice
+                                        || msgItem.isErrorNotice
                                         ? AiService.orbitModeLabel(msgItem.modelData.mode || AiService.orbitMode)
                                         : root.modelLabelForMessage(msgItem.modelData)
                                     font.family: Config.font
@@ -1317,15 +1465,19 @@ QsPopupWindow {
                                 radius: Config.radiusLarge
                                 color: msgItem.isActionResult
                                     ? Qt.alpha(Config.successColor, 0.08)
-                                    : (msgItem.isSystemNotice
+                                    : (msgItem.isErrorNotice
+                                        ? Qt.alpha(Config.errorColor, 0.08)
+                                        : (msgItem.isSystemNotice
                                         ? Qt.alpha(Config.warningColor, 0.08)
-                                        : Qt.alpha(Config.surface0Color, 0.96))
+                                        : Qt.alpha(Config.surface0Color, 0.96)))
                                 border.width: 1
                                 border.color: msgItem.isActionResult
                                     ? Qt.alpha(Config.successColor, 0.26)
-                                    : (msgItem.isSystemNotice
+                                    : (msgItem.isErrorNotice
+                                        ? Qt.alpha(Config.errorColor, 0.26)
+                                        : (msgItem.isSystemNotice
                                         ? Qt.alpha(Config.warningColor, 0.26)
-                                        : Qt.alpha(Config.surface2Color, 0.32))
+                                        : Qt.alpha(Config.surface2Color, 0.32)))
                                 implicitHeight: assistantCardColumn.implicitHeight + 20
 
                                 Column {

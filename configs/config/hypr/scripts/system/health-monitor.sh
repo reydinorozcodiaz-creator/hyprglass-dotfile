@@ -1,8 +1,8 @@
 #!/bin/bash
 # Hyprland System Health Monitor
 
-CONFIG_DIR="$HOME/.config/hypr"
-LOG_FILE="$CONFIG_DIR/logs/health.log"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
+LOG_FILE="$STATE_DIR/health.log"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 

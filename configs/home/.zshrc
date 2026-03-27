@@ -104,17 +104,17 @@ bindkey "^[[2~" overwrite-mode     # Tecla Insert
 [[ -r "/usr/share/z/z.sh" ]] && source /usr/share/z/z.sh
 
 # bun completions
-[ -s "/home/shidox/.bun/_bun" ] && source "/home/shidox/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS"
-export FLYCTL_INSTALL="/home/shidox/.fly"
+export FLYCTL_INSTALL="$HOME/.fly"
 export PATH="$FLYCTL_INSTALL/bin:$PATH"
 
 # opencode
-export PATH=/home/shidox/.opencode/bin:$PATH
+export PATH="$HOME/.opencode/bin:$PATH"
 
 export PATH="$HOME/flutter/bin:$PATH"
 
@@ -123,4 +123,3 @@ export PYENV_ROOT="$HOME/.pyenv"
 eval "$(pyenv init - zsh)"
 
 export QT_QPA_PLATFORM="wayland;xcb"
-

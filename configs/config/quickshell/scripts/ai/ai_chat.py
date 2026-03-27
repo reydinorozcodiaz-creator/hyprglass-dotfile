@@ -6,6 +6,7 @@ Commands:
   - chat
   - fetch_models
   - inspect_path
+  - list_mcp_tools
 
 The backend emits a single JSON object for non-streaming commands.
 For streaming chat commands it emits newline-delimited JSON events:
@@ -165,6 +166,94 @@ def query_needs_live_web(query: str) -> bool:
     )
 
 
+def query_needs_live_time(query: str) -> bool:
+    lowered = (query or "").strip().lower()
+    if not lowered:
+        return False
+
+    return bool(
+        re.search(
+            r"(que hora es en|qué hora es en|hora actual en|time in|current time in)\s+\S+",
+            lowered,
+        )
+    )
+
+
+def query_explicitly_requests_web(query: str) -> bool:
+    lowered = " " + (query or "").strip().lower() + " "
+    if not lowered.strip():
+        return False
+
+    markers = (
+        " busca ",
+        " buscar ",
+        " buscame ",
+        " búscame ",
+        " googlea ",
+        " google ",
+        " web ",
+        " internet ",
+        " en la web ",
+        " en internet ",
+        " con fuentes ",
+        " dame fuentes ",
+        " cita ",
+        " citame ",
+        " cítame ",
+        " source ",
+        " sources ",
+    )
+    return any(marker in lowered for marker in markers)
+
+
+def query_is_small_talk(query: str) -> bool:
+    lowered = (query or "").strip().lower()
+    if not lowered:
+        return False
+
+    lowered = re.sub(r"[!?.,;:()]+", "", lowered)
+    small_talk = {
+        "hola",
+        "hola!",
+        "buenas",
+        "buenos dias",
+        "buen día",
+        "buen dia",
+        "buenas tardes",
+        "buenas noches",
+        "hey",
+        "hi",
+        "hello",
+        "ola",
+        "gracias",
+        "ok",
+        "oki",
+        "vale",
+        "thanks",
+    }
+    return lowered in small_talk
+
+
+def query_should_use_web_tools(query: str) -> bool:
+    if query_is_small_talk(query):
+        return False
+
+    return (
+        query_needs_live_web(query)
+        or query_needs_live_time(query)
+        or query_explicitly_requests_web(query)
+    )
+
+
+def _tool_names(tools: list[dict]) -> set[str]:
+    names = set()
+    for tool in tools or []:
+        name = str(tool.get("name", "")).strip()
+        if name:
+            names.add(name)
+    return names
+
+
 def extract_web_context(query: str, search_result: dict | None, time_result: dict | None) -> dict:
     results = []
     if search_result:
@@ -218,7 +307,7 @@ def prepend_live_web_instruction(
 
     instruction = (
         "Usa los resultados web y/o la hora en vivo incluidos en el contexto para responder. "
-        "Si hay fuentes disponibles, menciona los enlaces mas utiles de forma breve. "
+        "Si hay fuentes disponibles, menciona solo las mas utiles y no las enumeres si no aportan valor. "
         "No respondas diciendo que el usuario consulte sitios externos si ya se incluyeron resultados frescos."
     )
     if require_live_web:
@@ -239,6 +328,24 @@ def parse_http_error(exc: urllib.error.HTTPError) -> str:
         return body
     except Exception:
         return body or str(exc)
+
+
+def friendly_network_error(reason) -> str:
+    text = str(reason or "").strip()
+    lowered = text.lower()
+
+    if "temporary failure in name resolution" in lowered or "name resolution" in lowered:
+        return (
+            "No se pudo resolver el servidor del proveedor. "
+            "Parece un problema de DNS o conectividad de red."
+        )
+    if "connection refused" in lowered:
+        return "La conexion fue rechazada por el servicio remoto."
+    if "timed out" in lowered or "timeout" in lowered:
+        return "La solicitud tardo demasiado y expiro."
+    if text:
+        return "Error de red: " + text
+    return "Error de red desconocido."
 
 
 def iter_sse_events(response) -> Iterator[str]:
@@ -953,6 +1060,24 @@ def handle_inspect_path(request: dict) -> None:
     emit(agent_runtime.read_path_preview(path_or_error))
 
 
+def handle_list_mcp_tools(request: dict) -> None:
+    del request
+    with mcp_client.McpSession() as session:
+        tools = session.list_tools()
+
+    normalized = []
+    for tool in tools:
+        normalized.append(
+            {
+                "name": str(tool.get("name", "")).strip(),
+                "description": str(tool.get("description", "")).strip(),
+                "inputSchema": tool.get("inputSchema") or {},
+            }
+        )
+
+    emit({"ok": True, "tools": normalized})
+
+
 def handle_chat(request: dict) -> None:
     messages = request.get("messages", [])
     if not messages:
@@ -996,47 +1121,96 @@ def handle_chat(request: dict) -> None:
     if request.get("webSearchEnabled", False):
         query = _last_user_text(request["messages"])
         web_context["query"] = query
-        require_live_web = query_needs_live_web(query)
+        require_live_web = query_needs_live_web(query) or query_needs_live_time(query)
+        should_use_web_tools = query_should_use_web_tools(query)
+        available_tools: set[str] = set()
+        mcp_error = ""
 
-        time_result = None
-        time_error = ""
-        try:
-            time_result = mcp_client.lookup_current_time(query)
-            time_info = (time_result.get("structuredContent") or {}).get("result")
-        except Exception as exc:
-            time_info = None
-            time_error = str(exc)
-        if time_info:
-            request["messages"] = append_live_time(request["messages"], time_info)
+        if should_use_web_tools:
+            try:
+                with mcp_client.McpSession() as mcp_session:
+                    available_tools = _tool_names(mcp_session.list_tools())
 
-        search_result = None
-        search_error = ""
-        try:
-            search_result = mcp_client.web_search(query, max_results=5)
-            results = (search_result.get("structuredContent") or {}).get("results", [])
-        except Exception as exc:
-            results = []
-            search_error = str(exc)
-        if results:
-            request["messages"] = append_web_results(request["messages"], query, results)
+                    time_result = None
+                    time_error = ""
+                    time_info = None
+                    if query_needs_live_time(query) and "lookup_current_time" in available_tools:
+                        try:
+                            time_result = mcp_session.call_tool(
+                                "lookup_current_time",
+                                {"query": query},
+                            )
+                            time_info = (time_result.get("structuredContent") or {}).get("result")
+                        except Exception as exc:
+                            time_info = None
+                            time_error = str(exc)
+                    else:
+                        time_error = (
+                            "MCP tool `lookup_current_time` is not available."
+                            if query_needs_live_time(query)
+                            else ""
+                        )
+                    if time_info:
+                        request["messages"] = append_live_time(request["messages"], time_info)
 
-        web_context = extract_web_context(query, search_result, time_result)
-        if require_live_web and not web_context.get("used"):
-            reasons = [item for item in (search_error, time_error) if item]
-            suffix = reasons[0] if reasons else "No hubo resultados frescos disponibles."
-            emit(
-                {
-                    "type": "done",
-                    "ok": False,
-                    "error": (
-                        "Orbit no pudo verificar esta consulta en tiempo real. "
-                        + "Activa una fuente web funcional o vuelve a intentarlo.\n\n"
-                        + suffix
-                    ),
-                    "webContext": web_context,
-                }
-            )
-            return
+                    search_result = None
+                    search_error = ""
+                    results = []
+                    if (
+                        query_needs_live_web(query) or query_explicitly_requests_web(query)
+                    ) and "web_search" in available_tools:
+                        try:
+                            search_result = mcp_session.call_tool(
+                                "web_search",
+                                {"query": query, "max_results": 5},
+                            )
+                            results = (
+                                (search_result.get("structuredContent") or {}).get("results", [])
+                            )
+                        except Exception as exc:
+                            results = []
+                            search_error = str(exc)
+                    elif query_needs_live_web(query) or query_explicitly_requests_web(query):
+                        search_error = "MCP tool `web_search` is not available."
+                    if results:
+                        request["messages"] = append_web_results(request["messages"], query, results)
+
+                    web_context = extract_web_context(query, search_result, time_result)
+                    if require_live_web and not web_context.get("used"):
+                        reasons = [
+                            item
+                            for item in (search_error, time_error, mcp_error)
+                            if item
+                        ]
+                        suffix = reasons[0] if reasons else "No hubo resultados frescos disponibles."
+                        emit(
+                            {
+                                "type": "done",
+                                "ok": False,
+                                "error": (
+                                    "Orbit no pudo verificar esta consulta en tiempo real por MCP. "
+                                    + "Activa un servidor MCP con web search funcional o vuelve a intentarlo.\n\n"
+                                    + suffix
+                                ),
+                                "webContext": web_context,
+                            }
+                        )
+                        return
+            except Exception as exc:
+                mcp_error = str(exc)
+                if require_live_web or query_explicitly_requests_web(query):
+                    emit(
+                        {
+                            "type": "done",
+                            "ok": False,
+                            "error": (
+                                "Orbit no pudo iniciar el servidor MCP para web search.\n\n"
+                                + mcp_error
+                            ),
+                            "webContext": web_context,
+                        }
+                    )
+                    return
         request["messages"] = prepend_live_web_instruction(
             request["messages"], require_live_web, web_context
         )
@@ -1068,6 +1242,9 @@ def main() -> None:
         if command == "inspect_path":
             handle_inspect_path(request)
             return
+        if command == "list_mcp_tools":
+            handle_list_mcp_tools(request)
+            return
         if command == "chat":
             handle_chat(request)
             return
@@ -1088,7 +1265,7 @@ def main() -> None:
         else:
             emit({"ok": False, "error": error_text})
     except urllib.error.URLError as exc:
-        error_text = f"Network error: {exc.reason}"
+        error_text = friendly_network_error(exc.reason)
         if command == "chat":
             emit({"type": "done", "ok": False, "error": error_text})
         else:

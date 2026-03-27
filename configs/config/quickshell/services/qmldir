@@ -12,6 +12,7 @@ singleton PowerService system/PowerService.qml
 singleton PerformanceProfileService system/PerformanceProfileService.qml
 singleton StateService stores/StateService.qml
 singleton ShortcutService shell/ShortcutService.qml
+singleton QuickSettingsService shell/QuickSettingsService.qml
 singleton LauncherService shell/LauncherService.qml
 singleton SystemMonitorService system/SystemMonitorService.qml
 singleton WindowManagerService shell/WindowManagerService.qml

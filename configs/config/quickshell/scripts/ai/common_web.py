@@ -10,9 +10,7 @@ import urllib.request
 from zoneinfo import ZoneInfo
 
 
-WEB_SEARCH_URL = os.environ.get(
-    "AI_WEB_SEARCH_URL", "https://html.duckduckgo.com/html/"
-)
+WEB_SEARCH_URL = os.environ.get("AI_WEB_SEARCH_URL", "https://html.duckduckgo.com/html/")
 OPEN_METEO_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 
 
@@ -22,12 +20,23 @@ def _strip_html(text: str) -> str:
     return html.unescape(text).strip()
 
 
-def web_search(query: str, max_results: int = 5) -> list[dict]:
+def web_search(
+    query: str, max_results: int = 5, domains: list[str] | None = None
+) -> list[dict]:
     cleaned_query = (query or "").strip()
     if not cleaned_query:
         return []
 
-    url = WEB_SEARCH_URL + "?" + urllib.parse.urlencode({"q": cleaned_query})
+    search_query = cleaned_query
+    domain_filters = [item.strip() for item in (domains or []) if item and item.strip()]
+    if domain_filters:
+        if len(domain_filters) == 1:
+            search_query = f"site:{domain_filters[0]} {cleaned_query}"
+        else:
+            filter_expr = " OR ".join(f"site:{item}" for item in domain_filters[:8])
+            search_query = f"({filter_expr}) {cleaned_query}"
+
+    url = WEB_SEARCH_URL + "?" + urllib.parse.urlencode({"q": search_query})
     req = urllib.request.Request(
         url,
         headers={

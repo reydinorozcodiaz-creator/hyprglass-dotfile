@@ -1,0 +1,16 @@
+/.pytest_cache/
+/.ruff_cache/
+**/__pycache__/
+*.pyc
+
+# Runtime JSON state
+/state.json
+/ai-cache.json
+/ai-history.json
+/secrets.json
+/assistant_agent_bridge_state.json
+/ai_agent_state.json
+/data/cache/*.json
+/data/private/*.json
+/data/state/*.json
+/data/state/assistant/

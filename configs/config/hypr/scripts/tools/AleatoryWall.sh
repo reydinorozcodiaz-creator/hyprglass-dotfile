@@ -7,11 +7,13 @@ set -euo pipefail
 
 # Configuration
 Script_Wall=$(basename "$0")
-LOG_FILE="$HOME/.config/hypr/logs/aleatory-wall.log"
-QUEUE_FILE="$HOME/.config/hypr/logs/.wallpaper-queue"
-QUEUE_LOCK_FILE="$HOME/.config/hypr/logs/.wallpaper-queue.lock"
-LOCK_WALLPAPER_LINK="$HOME/.config/hypr/logs/.lock-wallpaper"
-LOCK_WALLPAPER_STILL="$HOME/.config/hypr/logs/.lock-wallpaper.png"
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/wallpaper"
+LOG_FILE="$STATE_ROOT/aleatory-wall.log"
+QUEUE_FILE="$STATE_ROOT/queue"
+QUEUE_LOCK_FILE="$STATE_ROOT/queue.lock"
+CURRENT_WALLPAPER_FILE="$STATE_ROOT/current-wallpaper"
+LOCK_WALLPAPER_LINK="$STATE_ROOT/lock-wallpaper"
+LOCK_WALLPAPER_STILL="$STATE_ROOT/lock-wallpaper.png"
 BACKEND=${BACKEND:-swww} # swww | mpvpaper
 OUTPUT=${OUTPUT:-all}    # all | eDP-1 | DP-1 ...
 # mpv defaults tuned for a wallpaper use-case (lower CPU/RAM while keeping smooth playback).
@@ -72,8 +74,8 @@ success() {
     echo "$message" >> "$LOG_FILE" 2>/dev/null || true
 }
 
-# Create log directory if it doesn't exist
-mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+# Create state directory if it doesn't exist
+mkdir -p "$STATE_ROOT" 2>/dev/null || true
 
 ensure_queue() {
     # Creates (or recreates) a shuffled queue of wallpapers.
@@ -83,9 +85,9 @@ ensure_queue() {
         printf '%s\n' "${WALL[@]}" | shuf > "$QUEUE_FILE" || true
 
         # Avoid immediate repeat of current wallpaper when starting a new cycle.
-        if [[ -f "$HOME/.config/hypr/logs/.current-wallpaper" ]]; then
+        if [[ -f "$CURRENT_WALLPAPER_FILE" ]]; then
             local current
-            current=$(cat "$HOME/.config/hypr/logs/.current-wallpaper" 2>/dev/null || true)
+            current=$(cat "$CURRENT_WALLPAPER_FILE" 2>/dev/null || true)
             if [[ -n "$current" ]]; then
                 local first
                 first=$(head -n 1 "$QUEUE_FILE" 2>/dev/null || true)
@@ -451,13 +453,16 @@ set_wallpaper_mpvpaper() {
 
 update_quickshell_state() {
     local wallpaper="$1"
-    local state_file="$HOME/.config/quickshell/state.json"
+    local state_file="$HOME/.config/quickshell/data/state/state.json"
+    local legacy_state_file="$HOME/.config/quickshell/state.json"
     
-    debug "Updating quickshell state.json with new wallpaper"
+    debug "Updating Quickshell state with new wallpaper"
     
-    if [[ ! -f "$state_file" ]]; then
-        debug "state.json not found, skipping quickshell update"
-        return 0
+    if [[ ! -f "$state_file" && -f "$legacy_state_file" ]]; then
+        state_file="$legacy_state_file"
+    elif [[ ! -f "$state_file" ]]; then
+        mkdir -p "$(dirname "$state_file")"
+        printf '{}\n' > "$state_file"
     fi
     
     # Use jq if available, otherwise use python
@@ -537,7 +542,7 @@ apply_wallpaper() {
 
 
     success "Wallpaper changed to: $wallpaper_name"
-    echo "$wallpaper" > "$HOME/.config/hypr/logs/.current-wallpaper" 2>/dev/null || true
+    echo "$wallpaper" > "$CURRENT_WALLPAPER_FILE" 2>/dev/null || true
     update_quickshell_state "$wallpaper"
     update_lock_wallpaper "$wallpaper"
 }

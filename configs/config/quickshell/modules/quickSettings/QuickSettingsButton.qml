@@ -2,16 +2,17 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.config
+import qs.services
 import "../../components/"
 
 BarButton {
     id: root
 
-    active: quickSettingsWindow.visible
+    active: QuickSettingsService.visible
     contentItem: iconsLayout
     onClicked: {
         pulseAnimation.start()
-        quickSettingsWindow.visible = !quickSettingsWindow.visible
+        QuickSettingsService.toggle("dashboard")
     }
 
     RowLayout {
@@ -47,11 +48,6 @@ BarButton {
         BatteryIcon {
             color: iconsLayout.iconColor
         }
-    }
-
-    QuickSettingsWindow {
-        id: quickSettingsWindow
-        visible: false
     }
 
     SequentialAnimation {

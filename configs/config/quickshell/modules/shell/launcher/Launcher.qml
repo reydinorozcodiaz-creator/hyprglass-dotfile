@@ -8,12 +8,43 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.services
 import qs.config
-import qs.components
 
 PanelWindow {
     id: root
 
     visible: LauncherService.visible
+
+    readonly property string trackedModuleName: "Launcher"
+    readonly property color selectionColor: Qt.rgba(0.50, 0.67, 0.92, 0.26)
+    readonly property color selectionBorderColor: Qt.rgba(0.72, 0.84, 1.0, 0.42)
+    readonly property color selectionGlowColor: Qt.rgba(0.50, 0.67, 0.92, 0.12)
+    readonly property color hoverColor: Qt.alpha(Config.surface1Color, 0.18)
+    readonly property string matchColorCss: "#E8F1FF"
+
+    function escapeMarkup(text) {
+        return (text || "")
+            .toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    function highlightedLabel(text) {
+        const plainText = (text || "").toString();
+        const query = (LauncherService.query || "").trim().toLowerCase();
+        if (query === "")
+            return escapeMarkup(plainText);
+
+        const lowerText = plainText.toLowerCase();
+        const matchIndex = lowerText.indexOf(query);
+        if (matchIndex === -1)
+            return escapeMarkup(plainText);
+
+        const before = escapeMarkup(plainText.slice(0, matchIndex));
+        const match = escapeMarkup(plainText.slice(matchIndex, matchIndex + query.length));
+        const after = escapeMarkup(plainText.slice(matchIndex + query.length));
+        return before + "<font color=\"" + matchColorCss + "\"><b>" + match + "</b></font>" + after;
+    }
 
     anchors {
         top: true
@@ -25,75 +56,91 @@ PanelWindow {
     WlrLayershell.namespace: "qs_modules"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    WlrLayershell.exclusiveZone: -1
+
+    exclusionMode: ExclusionMode.Ignore
 
     color: "transparent"
 
-    // Click on background closes
-    MouseArea {
-        anchors.fill: parent
-        onClicked: {
-            contentLoader.item.forceActiveFocus();
-            LauncherService.hide();
-        }
+    onVisibleChanged: {
+        if (visible)
+            WindowManagerService.registerOpen(trackedModuleName);
+        else
+            WindowManagerService.registerClose(trackedModuleName);
     }
 
-    // Loader that creates/destroys the content
+    Component.onDestruction: WindowManagerService.registerClose(trackedModuleName)
+
+    MouseArea {
+        anchors.fill: parent
+        onClicked: LauncherService.hide()
+    }
+
     Loader {
-        id: contentLoader
         anchors.fill: parent
         active: LauncherService.visible
 
-        sourceComponent: Rectangle {
-            id: content
+        sourceComponent: Item {
             anchors.fill: parent
 
-            color: "transparent"
+            readonly property int canvasMaxWidth: 1334
+            readonly property int canvasMaxHeight: 726
+            readonly property int desiredColumns: Math.max(5, Math.min(8, Math.floor(gridArea.width / 132)))
 
-            // Scale animation on entry
-            scale: 1
-            opacity: 1
-
-            ColumnLayout {
+            Rectangle {
                 anchors.fill: parent
-                anchors.margins: 60
-                anchors.topMargin: 80
-                anchors.bottomMargin: 60
-                spacing: Config.spacing * 2
+                color: Qt.alpha(Config.backgroundColor, Math.min(0.58, Config.launcherOpacity + 0.08))
+            }
 
-                // Search bar
+            Rectangle {
+                id: canvas
+
+                width: Math.min(root.width - 16, canvasMaxWidth)
+                height: Math.min(root.height - Config.barHeight - 10, canvasMaxHeight)
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.topMargin: Config.barHeight + 2
+
+                color: Qt.alpha(Config.backgroundColor, 0.12)
+                border.width: 0
+
                 Rectangle {
-                    id: searchBar
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: Math.min(parent.width - 160, 800)
-                    Layout.preferredHeight: 64
-                    radius: Config.radiusLarge
-                    color: Config.surface0Color
-                    border.width: searchInput.activeFocus ? 2 : 0
-                    border.color: Config.accentColor
+                    id: searchShell
 
-                    Behavior on border.width {
-                        NumberAnimation {
+                    width: 236
+                    height: 54
+                    radius: 16
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 56
+
+                    color: Qt.rgba(0.10, 0.11, 0.14, 0.72)
+                    border.width: 1
+                    border.color: Qt.alpha(searchInput.activeFocus ? Config.textColor : Config.surface1Color,
+                                           searchInput.activeFocus ? 0.14 : 0.08)
+
+                    Behavior on border.color {
+                        ColorAnimation {
                             duration: Config.animDurationShort
                         }
                     }
 
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: event => event.accepted = true
+                    }
+
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Config.spacing + 6
-                        anchors.rightMargin: Config.spacing + 6
-                        spacing: Config.spacing
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 14
+                        spacing: 10
 
                         Text {
-                            text: ""
+                            text: "󰀻"
                             font.family: Config.font
-                            font.pixelSize: Config.fontSizeIconLarge
-                            color: searchInput.activeFocus ? Config.accentColor : Config.subtextColor
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Config.animDurationShort
-                                }
-                            }
+                            font.pixelSize: Config.fontSizeSmall
+                            color: Qt.alpha(Config.textColor, 0.78)
                         }
 
                         TextField {
@@ -103,368 +150,293 @@ PanelWindow {
 
                             color: Config.textColor
                             font.family: Config.font
-                            font.pixelSize: 22
+                            font.pixelSize: Config.fontSizeNormal
                             verticalAlignment: TextInput.AlignVCenter
                             selectByMouse: true
-                            placeholderText: "Search apps..."
-                            placeholderTextColor: Config.mutedColor
+                            placeholderText: "Search"
+                            placeholderTextColor: Qt.alpha(Config.textColor, 0.55)
+                            selectionColor: Qt.alpha(root.selectionColor, 0.35)
+                            selectedTextColor: Config.textColor
                             background: null
 
-                            onTextChanged: LauncherService.query = text
+                            onTextChanged: querySyncTimer.restart()
 
                             Keys.onEscapePressed: {
                                 focus = false;
                                 LauncherService.hide();
                             }
 
-                            Keys.onReturnPressed: LauncherService.launchSelected()
+                            Keys.onReturnPressed: {
+                                if (querySyncTimer.running) {
+                                    querySyncTimer.stop();
+                                    LauncherService.query = text;
+                                }
+                                LauncherService.launchSelected();
+                            }
 
-                            Keys.onLeftPressed: {
-                                if (LauncherService.selectedIndex > 0)
+                            Keys.onLeftPressed: event => {
+                                if (LauncherService.selectedIndex > 0) {
                                     LauncherService.selectedIndex--;
-                            }
-
-                            Keys.onRightPressed: {
-                                if (LauncherService.selectedIndex < LauncherService.filteredApps.length - 1)
-                                    LauncherService.selectedIndex++;
-                            }
-
-                            Keys.onUpPressed: {
-                                const cols = appList.cellWidth > 0 ? Math.floor(appList.width / appList.cellWidth) : 1;
-                                const newIndex = LauncherService.selectedIndex - cols;
-                                if (newIndex >= 0)
-                                    LauncherService.selectedIndex = newIndex;
-                            }
-
-                            Keys.onDownPressed: {
-                                const cols = appList.cellWidth > 0 ? Math.floor(appList.width / appList.cellWidth) : 1;
-                                const newIndex = LauncherService.selectedIndex + cols;
-                                if (newIndex < LauncherService.filteredApps.length)
-                                    LauncherService.selectedIndex = newIndex;
-                            }
-
-                            Keys.onTabPressed: event => {
-                                if (LauncherService.selectedIndex < LauncherService.filteredApps.length - 1)
-                                    LauncherService.selectedIndex++;
-                                event.accepted = true;
-                            }
-
-                            Keys.onPressed: event => {
-                                const isBacktab = event.key === Qt.Key_Backtab;
-                                const isShiftTab = event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier);
-
-                                if (isBacktab || isShiftTab) {
-                                    if (LauncherService.selectedIndex > 0)
-                                        LauncherService.selectedIndex--;
                                     event.accepted = true;
                                 }
                             }
 
+                            Keys.onRightPressed: event => {
+                                if (LauncherService.selectedIndex < LauncherService.filteredApps.length - 1) {
+                                    LauncherService.selectedIndex++;
+                                    event.accepted = true;
+                                }
+                            }
+
+                            Keys.onUpPressed: event => {
+                                const cols = Math.max(1, Math.floor(grid.width / grid.cellWidth));
+                                const newIndex = LauncherService.selectedIndex - cols;
+                                if (newIndex >= 0)
+                                    LauncherService.selectedIndex = newIndex;
+                                event.accepted = true;
+                            }
+
+                            Keys.onDownPressed: event => {
+                                const cols = Math.max(1, Math.floor(grid.width / grid.cellWidth));
+                                const newIndex = LauncherService.selectedIndex + cols;
+                                if (newIndex < LauncherService.filteredApps.length)
+                                    LauncherService.selectedIndex = newIndex;
+                                event.accepted = true;
+                            }
+
                             Component.onCompleted: {
+                                querySyncTimer.stop();
                                 LauncherService.query = "";
                                 LauncherService.selectedIndex = 0;
                                 Qt.callLater(() => {
-                                    if (LauncherService.visible) {
+                                    if (LauncherService.visible)
                                         forceActiveFocus();
-                                    }
                                 });
                             }
                         }
+                    }
 
-                        // Results counter
-                        Rectangle {
-                            visible: LauncherService.filteredApps.length > 0
-                            Layout.preferredWidth: countText.implicitWidth + 12
-                            Layout.preferredHeight: 22
-                            radius: height / 2
-                            color: Config.surface1Color
-
-                            Text {
-                                id: countText
-                                anchors.centerIn: parent
-                                text: LauncherService.filteredApps.length
-                                font.family: Config.font
-                                font.pixelSize: Config.fontSizeSmall
-                                color: Config.subtextColor
-                            }
-                        }
-
-                        // Clear button
-                        Rectangle {
-                            visible: searchInput.text
-                            Layout.preferredWidth: 28
-                            Layout.preferredHeight: 28
-                            radius: height / 2
-                            color: clearMouse.containsMouse ? Config.surface2Color : "transparent"
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Config.animDurationShort
-                                }
-                            }
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "󰅖"
-                                font.family: Config.font
-                                font.pixelSize: Config.fontSizeSmall
-                                color: Config.subtextColor
-                            }
-
-                            MouseArea {
-                                id: clearMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    searchInput.text = "";
-                                    searchInput.forceActiveFocus();
-                                }
-                            }
-                        }
+                    Timer {
+                        id: querySyncTimer
+                        interval: 16
+                        repeat: false
+                        onTriggered: LauncherService.query = searchInput.text
                     }
                 }
 
-                // Separator
-                Rectangle {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: Math.min(parent.width - 160, 800)
-                    Layout.preferredHeight: 1
-                    color: Config.surface1Color
-                    opacity: 0.5
-                }
+                Item {
+                    id: gridArea
 
-                // App grid
-                GridView {
-                    id: appList
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.topMargin: 20
+                    anchors.top: searchShell.bottom
+                    anchors.topMargin: 62
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: 72
+                    anchors.rightMargin: 72
+                    anchors.bottomMargin: 36
 
-                    clip: true
-                    cellWidth: appList.width > 0 ? Math.floor(appList.width / Math.max(1, Math.floor(appList.width / 140))) : 140
-                    cellHeight: 160
-                    model: LauncherService.filteredApps
-                    currentIndex: LauncherService.selectedIndex
+                    GridView {
+                        id: grid
 
-                    // Add/remove item animations
-                    add: Transition {
-                        NumberAnimation {
-                            property: "opacity"
-                            from: 0
-                            to: 1
-                            duration: Config.animDurationShort
-                        }
-                        NumberAnimation {
-                            property: "scale"
-                            from: 0.8
-                            to: 1
-                            duration: Config.animDurationShort
-                            easing.type: Easing.OutBack
-                        }
-                    }
+                        anchors.fill: parent
 
-                    remove: Transition {
-                        NumberAnimation {
-                            property: "opacity"
-                            to: 0
-                            duration: Config.animDurationShort
-                        }
-                    }
-
-                    displaced: Transition {
-                        NumberAnimation {
-                            properties: "x,y"
-                            duration: Config.animDuration
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-
-                    highlightFollowsCurrentItem: true
-                    highlight: Rectangle {
-                        width: appList.cellWidth
-                        height: appList.cellHeight
-                        radius: Config.radiusLarge
-                        color: Qt.alpha(Config.accentColor, 0.15)
-                        border.width: 2
-                        border.color: Config.accentColor
-
-                        Behavior on x {
-                            NumberAnimation {
-                                duration: Config.animDurationShort
-                                easing.type: Easing.OutCubic
-                            }
-                        }
-                        Behavior on y {
-                            NumberAnimation {
-                                duration: Config.animDurationShort
-                                easing.type: Easing.OutCubic
-                            }
-                        }
-                    }
+                        clip: true
+                        reuseItems: true
+                        cacheBuffer: 240
+                        boundsBehavior: Flickable.StopAtBounds
+                        model: LauncherService.filteredApps
+                        currentIndex: LauncherService.selectedIndex
+                        cellWidth: Math.max(118, Math.floor(width / Math.max(1, desiredColumns)))
+                        cellHeight: 178
 
                     delegate: Item {
                         id: delegateItem
                         required property int index
                         required property var modelData
 
-                        width: appList.cellWidth
-                        height: appList.cellHeight
+                        width: grid.cellWidth
+                        height: grid.cellHeight
 
                         property bool isSelected: index === LauncherService.selectedIndex
-                        property bool isHovered: delegateMouse.containsMouse
-                        property bool isRecent: LauncherService.query === "" && LauncherService.recentIds.includes(modelData?.id ?? "")
+                        property bool isHovered: tileMouse.containsMouse
+                        property bool isAction: (modelData?.kind || "app") === "action"
+                        property bool isPinned: LauncherService.isPinned(modelData?.id || "")
 
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 8
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.top: parent.top
+                            anchors.topMargin: delegateItem.isSelected ? -4 : 0
+                            width: Math.min(parent.width - 6, 126)
+                            height: delegateItem.isSelected ? 162 : 154
+                            radius: 22
+                            visible: delegateItem.isSelected
+                            color: root.selectionGlowColor
+                        }
 
-                            // Icon container
+                        Rectangle {
+                            id: tileBackground
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.top: parent.top
+                            width: Math.min(parent.width - 14, 116)
+                            height: 154
+                            radius: 18
+                            color: delegateItem.isSelected
+                                ? root.selectionColor
+                                : (delegateItem.isHovered ? Qt.alpha(root.hoverColor, 1.15) : "transparent")
+                            border.width: delegateItem.isSelected ? 1 : (delegateItem.isHovered ? 1 : 0)
+                            border.color: delegateItem.isSelected
+                                ? root.selectionBorderColor
+                                : Qt.alpha(Config.surface1Color, 0.18)
+                            opacity: delegateItem.isHovered || delegateItem.isSelected ? 1 : 0.92
+
                             Rectangle {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: 96
-                                height: 96
-                                radius: Config.radiusLarge
-                                color: delegateItem.isHovered ? Config.surface1Color : Config.surface0Color
+                                anchors.fill: parent
+                                anchors.margins: 1
+                                radius: parent.radius - 1
+                                color: delegateItem.isSelected
+                                    ? Qt.rgba(0.82, 0.89, 1.0, 0.05)
+                                    : "transparent"
+                            }
 
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Config.animDurationShort
-                                    }
-                                }
+                            Rectangle {
+                                visible: delegateItem.isPinned
+                                width: 20
+                                height: 20
+                                radius: 10
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 8
+                                color: Qt.alpha(Config.textColor, 0.18)
 
-                                Image {
+                                Text {
                                     anchors.centerIn: parent
-                                    width: 72
-                                    height: 72
-                                    source: {
-                                        const icon = delegateItem.modelData?.icon ?? "";
-                                        return icon ? "image://icon/" + icon : "image://icon/application-x-executable";
-                                    }
-                                    sourceSize: Qt.size(96, 96)
-                                    fillMode: Image.PreserveAspectFit
-                                    smooth: true
-                                }
-
-                                // Recent indicator dot
-                                Rectangle {
-                                    visible: delegateItem.isRecent
-                                    width: 8
-                                    height: 8
-                                    radius: 4
-                                    color: Config.accentColor
-                                    anchors.bottom: parent.bottom
-                                    anchors.right: parent.right
-                                    anchors.margins: 4
+                                    text: "󰐃"
+                                    font.family: Config.font
+                                    font.pixelSize: 10
+                                    color: Config.textColor
                                 }
                             }
 
-                            // App name
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: appList.cellWidth - 12
-                                text: delegateItem.modelData?.name ?? ""
-                                color: delegateItem.isSelected ? Config.accentColor : Config.textColor
-                                font.family: Config.font
-                                font.pixelSize: Config.fontSizeNormal
-                                font.weight: delegateItem.isSelected ? Font.DemiBold : Font.Normal
-                                elide: Text.ElideRight
-                                horizontalAlignment: Text.AlignHCenter
-                                maximumLineCount: 2
-                                wrapMode: Text.Wrap
+                            Column {
+                                anchors.fill: parent
+                                anchors.topMargin: delegateItem.isSelected ? 20 : 16
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                spacing: 12
 
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Config.animDurationShort
+                                Item {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: delegateItem.isSelected ? 72 : 68
+                                    height: delegateItem.isSelected ? 72 : 68
+
+                                    Image {
+                                        anchors.centerIn: parent
+                                        visible: !delegateItem.isAction
+                                        asynchronous: true
+                                        width: parent.width
+                                        height: parent.height
+                                        source: {
+                                            const icon = delegateItem.modelData?.iconName ?? "";
+                                            return icon ? "image://icon/" + icon : "image://icon/application-x-executable";
+                                        }
+                                        sourceSize: Qt.size(96, 96)
+                                        fillMode: Image.PreserveAspectFit
+                                        smooth: true
                                     }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        visible: delegateItem.isAction
+                                        text: delegateItem.modelData?.iconGlyph ?? "󰀻"
+                                        font.family: Config.font
+                                        font.pixelSize: delegateItem.isSelected ? 44 : 40
+                                        color: Config.textColor
+                                    }
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    text: root.highlightedLabel(delegateItem.modelData?.name ?? "")
+                                    textFormat: Text.StyledText
+                                    color: Config.textColor
+                                    font.family: Config.font
+                                    font.pixelSize: Config.fontSizeSmall + 1
+                                    font.weight: delegateItem.isSelected ? Font.Medium : Font.Normal
+                                    horizontalAlignment: Text.AlignHCenter
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 2
                                 }
                             }
                         }
 
                         MouseArea {
-                            id: delegateMouse
+                            id: tileMouse
                             anchors.fill: parent
                             hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
+                            onClicked: mouse => {
+                                if (mouse.button === Qt.RightButton) {
+                                    LauncherService.togglePinned(delegateItem.modelData?.id || "");
+                                    return;
+                                }
                                 if (delegateItem.isSelected) {
-                                    // Second click: opens the app
                                     if (delegateItem.modelData)
                                         LauncherService.launch(delegateItem.modelData);
                                 } else {
-                                    // First click: selects
                                     LauncherService.selectedIndex = delegateItem.index;
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Empty state
-                    Column {
-                        anchors.centerIn: parent
-                        spacing: Config.spacing
-                        visible: appList.count === 0
-                        opacity: visible ? 1 : 0
+                        onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
 
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Config.animDurationShort
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+
+                            contentItem: Rectangle {
+                                implicitWidth: 4
+                                radius: 2
+                                color: Qt.alpha(Config.surface2Color, 0.45)
                             }
-                        }
 
-                        Spinner {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            size: Config.fontSizeIconLarge
-                            running: !LauncherService.query && appList.count === 0
-                            color: Config.mutedColor
-                        }
-
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: LauncherService.query ? "󰅖" : ""
-                            font.family: Config.font
-                            font.pixelSize: Config.fontSizeIconLarge
-                            color: Config.mutedColor
-                            visible: LauncherService.query
-                        }
-
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: LauncherService.query ? "No results" : "Loading..."
-                            color: Config.subtextColor
-                            font.family: Config.font
-                            font.pixelSize: Config.fontSizeNormal
-                        }
-                    }
-
-                    // Auto-scroll when navigating
-                    onCurrentIndexChanged: {
-                        positionViewAtIndex(currentIndex, GridView.Contain);
-                    }
-
-                    // Smooth scroll
-                    ScrollBar.vertical: ScrollBar {
-                        policy: ScrollBar.AsNeeded
-
-                        contentItem: Rectangle {
-                            implicitWidth: 4
-                            radius: 2
-                            color: Config.surface2Color
-                            opacity: parent.active ? 1 : 0
-
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Config.animDurationShort
-                                }
+                            background: Rectangle {
+                                implicitWidth: 4
+                                color: "transparent"
                             }
                         }
                     }
                 }
             }
+
+            Column {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: canvas.top
+                anchors.topMargin: 232
+                spacing: 8
+                visible: LauncherService.filteredApps.length === 0
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "No results"
+                    font.family: Config.font
+                    font.pixelSize: Config.fontSizeLarge
+                    color: Config.textColor
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Try another search term."
+                    font.family: Config.font
+                    font.pixelSize: Config.fontSizeSmall
+                    color: Qt.alpha(Config.textColor, 0.68)
+                }
+            }
         }
     }
 
-    // Focus grab
     HyprlandFocusGrab {
         windows: [root]
         active: root.visible
