@@ -12,7 +12,7 @@ Singleton {
     property string query: ""
     property int selectedIndex: 0
     property int maxItems: 200
-    property int searchMaxItems: 36
+    property int searchMaxItems: 14
 
     property var recentIds: []
     readonly property int maxRecent: 12
@@ -171,6 +171,33 @@ Singleton {
         ];
     }
 
+    function _createIntentEntries() {
+        return [
+            { id: "intent:wifi:on", kind: "intent", actionId: "wifi_on", name: "Turn Wi-Fi On", subtitle: NetworkService.wifiEnabled ? "Wi-Fi is already on" : "Enable wireless networking", iconGlyph: "󰤨", aliases: ["wifi on", "turn wifi on", "enable wifi", "activar wifi", "prender wifi", "wi-fi on"] },
+            { id: "intent:wifi:off", kind: "intent", actionId: "wifi_off", name: "Turn Wi-Fi Off", subtitle: NetworkService.wifiEnabled ? "Disable wireless networking" : "Wi-Fi is already off", iconGlyph: "󰤮", aliases: ["wifi off", "turn wifi off", "disable wifi", "apagar wifi", "wi-fi off"] },
+            { id: "intent:bluetooth:on", kind: "intent", actionId: "bluetooth_on", name: "Turn Bluetooth On", subtitle: BluetoothService.isPowered ? "Bluetooth is already on" : "Enable bluetooth adapter", iconGlyph: "", aliases: ["bluetooth on", "turn bluetooth on", "enable bluetooth", "activar bluetooth", "bt on"] },
+            { id: "intent:bluetooth:off", kind: "intent", actionId: "bluetooth_off", name: "Turn Bluetooth Off", subtitle: BluetoothService.isPowered ? "Disable bluetooth adapter" : "Bluetooth is already off", iconGlyph: "󰂲", aliases: ["bluetooth off", "turn bluetooth off", "disable bluetooth", "apagar bluetooth", "bt off"] },
+            { id: "intent:audio:mute", kind: "intent", actionId: "mute", name: "Mute Audio", subtitle: AudioService.muted ? "Audio is already muted" : "Silence current output", iconGlyph: "", aliases: ["mute", "mute audio", "silence", "audio off", "volume mute", "callar"] },
+            { id: "intent:audio:unmute", kind: "intent", actionId: "unmute", name: "Unmute Audio", subtitle: AudioService.muted ? "Restore current output" : "Audio is already active", iconGlyph: "", aliases: ["unmute", "restore audio", "audio on", "sound on", "activar audio"] },
+            { id: "intent:mic:mute", kind: "intent", actionId: "mic_mute", name: "Mute Microphone", subtitle: AudioService.sourceMuted ? "Microphone is already muted" : "Disable microphone capture", iconGlyph: "󰍭", aliases: ["mute mic", "mute microphone", "mic off", "microphone off", "silence mic"] },
+            { id: "intent:mic:unmute", kind: "intent", actionId: "mic_unmute", name: "Unmute Microphone", subtitle: AudioService.sourceMuted ? "Enable microphone capture" : "Microphone is already active", iconGlyph: "󰍬", aliases: ["unmute mic", "unmute microphone", "mic on", "microphone on"] },
+            { id: "intent:audio:up", kind: "intent", actionId: "volume_up", name: "Volume Up", subtitle: "Increase output volume by 5%", iconGlyph: "", aliases: ["volume up", "increase volume", "louder", "subir volumen", "sound up"] },
+            { id: "intent:audio:down", kind: "intent", actionId: "volume_down", name: "Volume Down", subtitle: "Lower output volume by 5%", iconGlyph: "", aliases: ["volume down", "decrease volume", "quieter", "bajar volumen", "sound down"] },
+            { id: "intent:brightness:up", kind: "intent", actionId: "brightness_up", name: "Brightness Up", subtitle: "Increase screen brightness by 5%", iconGlyph: "󰃠", aliases: ["brightness up", "increase brightness", "brighter", "subir brillo"] },
+            { id: "intent:brightness:down", kind: "intent", actionId: "brightness_down", name: "Brightness Down", subtitle: "Lower screen brightness by 5%", iconGlyph: "󰃟", aliases: ["brightness down", "decrease brightness", "dimmer", "bajar brillo"] },
+            { id: "intent:dnd:on", kind: "intent", actionId: "dnd_on", name: "Turn DND On", subtitle: NotificationService.dndEnabled ? "Do Not Disturb is already enabled" : "Silence notification popups", iconGlyph: "󰂛", aliases: ["dnd on", "do not disturb on", "enable dnd", "silence notifications", "activar no molestar"] },
+            { id: "intent:dnd:off", kind: "intent", actionId: "dnd_off", name: "Turn DND Off", subtitle: NotificationService.dndEnabled ? "Allow notification popups again" : "Do Not Disturb is already disabled", iconGlyph: "󰂚", aliases: ["dnd off", "do not disturb off", "disable dnd", "notifications on", "desactivar no molestar"] },
+            { id: "intent:nightlight:on", kind: "intent", actionId: "night_light_on", name: "Night Light On", subtitle: BrightnessService.nightLightEnabled ? "Night light is already enabled" : "Warm the display tone", iconGlyph: "󰖔", aliases: ["night light on", "enable night light", "warm screen", "activar luz nocturna"] },
+            { id: "intent:nightlight:off", kind: "intent", actionId: "night_light_off", name: "Night Light Off", subtitle: BrightnessService.nightLightEnabled ? "Restore cooler display tone" : "Night light is already disabled", iconGlyph: "󰖨", aliases: ["night light off", "disable night light", "cool screen", "desactivar luz nocturna"] },
+            { id: "intent:wallpaper", kind: "intent", actionId: "wallpaper", name: "Open Wallpapers", subtitle: "Browse and switch wallpapers", iconGlyph: "󰸉", aliases: ["wallpaper", "wallpapers", "background", "fondo", "open wallpaper"] },
+            { id: "intent:orbit", kind: "intent", actionId: "orbit", name: "Open Orbit", subtitle: "Launch the assistant window", iconGlyph: "󰚩", aliases: ["orbit", "assistant", "ai", "open orbit"] },
+            { id: "intent:shutdown", kind: "intent", actionId: "shutdown", name: "Shutdown", subtitle: "Power off the system now", iconGlyph: "", aliases: ["shutdown", "power off", "apagar pc", "turn off computer"] },
+            { id: "intent:reboot", kind: "intent", actionId: "reboot", name: "Reboot", subtitle: "Restart the system", iconGlyph: "󰜉", aliases: ["reboot", "restart", "reiniciar"] },
+            { id: "intent:suspend", kind: "intent", actionId: "suspend", name: "Suspend", subtitle: "Put the system to sleep", iconGlyph: "󰤄", aliases: ["suspend", "sleep", "dormir pc"] },
+            { id: "intent:logout", kind: "intent", actionId: "logout", name: "Logout", subtitle: "Close the current session", iconGlyph: "󰍃", aliases: ["logout", "log out", "cerrar sesion"] }
+        ];
+    }
+
     function _decorateAppEntry(app) {
         const genericName = app.genericName || "";
         const commentText = app.comment || "";
@@ -303,7 +330,7 @@ Singleton {
 
     readonly property var filteredApps: {
         void root._refreshToken;
-        const entries = root._allEntries;
+        const baseEntries = root._allEntries;
 
         if (query.trim() === "") {
             const used = ({});
@@ -318,7 +345,7 @@ Singleton {
 
             root.pinnedIds.forEach(id => pushEntry(root._entryById[id] || null));
 
-            entries
+            baseEntries
                 .filter(entry => !used[entry.id] && root._usageCount(entry.id) > 0)
                 .sort((a, b) => {
                     const usageDelta = root._usageCount(b.id) - root._usageCount(a.id);
@@ -332,11 +359,12 @@ Singleton {
                 .forEach(pushEntry);
 
             root.recentIds.forEach(id => pushEntry(root._entryById[id] || null));
-            entries.forEach(pushEntry);
+            baseEntries.forEach(pushEntry);
 
             return ordered.slice(0, maxItems);
         }
 
+        const entries = baseEntries.concat(root._createIntentEntries().map(entry => root._prepareEntry(entry)));
         const qNorm = _normalize(query.trim());
         const qCompact = _compact(query.trim());
         const resultLimit = searchMaxItems;
@@ -456,8 +484,28 @@ Singleton {
         case "wifi":
             QuickSettingsService.show("wifi");
             break;
+        case "wifi_on":
+            if (!NetworkService.wifiEnabled)
+                NetworkService.toggleWifi();
+            OsdService.showMessage("󰤨", NetworkService.wifiEnabled ? "Wi-Fi already on" : "Turning Wi-Fi on");
+            break;
+        case "wifi_off":
+            if (NetworkService.wifiEnabled)
+                NetworkService.toggleWifi();
+            OsdService.showMessage("󰤮", NetworkService.wifiEnabled ? "Turning Wi-Fi off" : "Wi-Fi already off");
+            break;
         case "bluetooth":
             QuickSettingsService.show("bluetooth");
+            break;
+        case "bluetooth_on":
+            if (!BluetoothService.isPowered)
+                BluetoothService.togglePower();
+            OsdService.showMessage("", BluetoothService.isPowered ? "Bluetooth already on" : "Turning Bluetooth on");
+            break;
+        case "bluetooth_off":
+            if (BluetoothService.isPowered)
+                BluetoothService.togglePower();
+            OsdService.showMessage("󰂲", BluetoothService.isPowered ? "Turning Bluetooth off" : "Bluetooth already off");
             break;
         case "theme":
             QuickSettingsService.show("theme");
@@ -468,11 +516,85 @@ Singleton {
         case "screenshot":
             ShortcutService.screenshotRequested();
             break;
+        case "wallpaper":
+            WallpaperService.show();
+            break;
+        case "orbit":
+            AiService.toggleWindow();
+            break;
+        case "mute":
+            if (!AudioService.muted)
+                AudioService.toggleMute();
+            OsdService.showVolume(AudioService.volume, true);
+            break;
+        case "unmute":
+            if (AudioService.muted)
+                AudioService.toggleMute();
+            OsdService.showVolume(AudioService.volume, false);
+            break;
+        case "mic_mute":
+            if (!AudioService.sourceMuted)
+                AudioService.toggleSourceMute();
+            OsdService.showMessage("󰍭", AudioService.sourceMuted ? "Microphone already muted" : "Microphone muted");
+            break;
+        case "mic_unmute":
+            if (AudioService.sourceMuted)
+                AudioService.toggleSourceMute();
+            OsdService.showMessage("󰍬", AudioService.sourceMuted ? "Microphone unmuted" : "Microphone already active");
+            break;
+        case "volume_up":
+            AudioService.increaseVolume();
+            OsdService.showVolume(AudioService.volume, false);
+            break;
+        case "volume_down":
+            AudioService.decreaseVolume();
+            OsdService.showVolume(AudioService.volume, AudioService.muted);
+            break;
+        case "brightness_up":
+            BrightnessService.increaseBrightness();
+            OsdService.showBrightness(BrightnessService.brightness);
+            break;
+        case "brightness_down":
+            BrightnessService.decreaseBrightness();
+            OsdService.showBrightness(BrightnessService.brightness);
+            break;
+        case "dnd_on":
+            if (!NotificationService.dndEnabled)
+                NotificationService.enableDndFor(-1);
+            OsdService.showMessage("󰂛", NotificationService.dndEnabled ? "Do Not Disturb already on" : "Do Not Disturb enabled");
+            break;
+        case "dnd_off":
+            if (NotificationService.dndEnabled)
+                NotificationService.disableDnd();
+            OsdService.showMessage("󰂚", NotificationService.dndEnabled ? "Do Not Disturb disabled" : "Do Not Disturb already off");
+            break;
+        case "night_light_on":
+            if (!BrightnessService.nightLightEnabled)
+                BrightnessService.enableNightLight();
+            OsdService.showMessage("󰖔", BrightnessService.nightLightEnabled ? "Night light already on" : "Night light enabled");
+            break;
+        case "night_light_off":
+            if (BrightnessService.nightLightEnabled)
+                BrightnessService.disableNightLight();
+            OsdService.showMessage("󰖨", BrightnessService.nightLightEnabled ? "Night light disabled" : "Night light already off");
+            break;
         case "power":
             PowerService.showOverlay();
             break;
         case "lock":
             PowerService.lock();
+            break;
+        case "shutdown":
+            PowerService.shutdown();
+            break;
+        case "reboot":
+            PowerService.reboot();
+            break;
+        case "suspend":
+            PowerService.suspend();
+            break;
+        case "logout":
+            PowerService.logout();
             break;
         default:
             console.warn("[Launcher] Unknown action:", actionId);
@@ -496,10 +618,12 @@ Singleton {
             return;
 
         console.log("[Launcher] Launching:", entry.name);
-        _markRecent(entry.id);
-        _trackUsage(entry.id);
+        if (entry.kind !== "intent") {
+            _markRecent(entry.id);
+            _trackUsage(entry.id);
+        }
 
-        if (entry.kind === "action") {
+        if (entry.kind === "action" || entry.kind === "intent") {
             hide();
             _runAction(entry.actionId);
             return;

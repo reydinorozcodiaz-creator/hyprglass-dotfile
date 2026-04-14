@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.config
 import qs.components
+import qs.services
 
 PanelWindow {
     id: root
@@ -34,6 +35,11 @@ PanelWindow {
 
     function hide() {
         showing = false;
+    }
+
+    onShowingChanged: {
+        if (showing)
+            HyprKeybindsService.reload();
     }
 
     // Click on background closes
@@ -145,159 +151,35 @@ PanelWindow {
                     width: parent.width
                     spacing: 14
 
-                    KeybindSection {
-                        title: "Apps"
-                        icon: "󰀻"
-                        keybinds: [
-                            {
-                                keys: "Super + Return",
-                                action: "Terminal"
-                            },
-                            {
-                                keys: "Super + D",
-                                action: "File Manager"
-                            },
-                            {
-                                keys: "Super + Z",
-                                action: "Browser"
-                            },
-                            {
-                                keys: "Super + Space",
-                                action: "App Launcher"
-                            }
-                        ]
+                    Repeater {
+                        model: HyprKeybindsService.sections
+
+                        delegate: KeybindSection {
+                            required property var modelData
+
+                            title: modelData.title
+                            icon: modelData.icon
+                            keybinds: modelData.keybinds
+                        }
                     }
 
-                    KeybindSection {
-                        title: "Windows"
-                        icon: "󰖯"
-                        keybinds: [
-                            {
-                                keys: "Super + Q",
-                                action: "Kill window"
-                            },
-                            {
-                                keys: "Super + F",
-                                action: "Fullscreen"
-                            },
-                            {
-                                keys: "Super + Shift + F",
-                                action: "Fullscreen (pinned)"
-                            },
-                            {
-                                keys: "Super + Shift + Space",
-                                action: "Toggle floating"
-                            },
-                            {
-                                keys: "Super + Tab",
-                                action: "Toggle split"
-                            },
-                            {
-                                keys: "Super + P",
-                                action: "Pseudo tile"
-                            },
-                            {
-                                keys: "Super + H J K L",
-                                action: "Move focus"
-                            },
-                            {
-                                keys: "Super + Shift + H J K L",
-                                action: "Move window"
-                            },
-                            {
-                                keys: "Super + Alt + H J K L",
-                                action: "Resize window"
-                            }
-                        ]
-                    }
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: HyprKeybindsService.sections.length === 0 ? 120 : 0
+                        visible: HyprKeybindsService.sections.length === 0
 
-                    KeybindSection {
-                        title: "Workspaces"
-                        icon: "󰍹"
-                        keybinds: [
-                            {
-                                keys: "Super + 1-0",
-                                action: "Switch workspace"
-                            },
-                            {
-                                keys: "Super + Shift + 1-0",
-                                action: "Move to workspace"
-                            },
-                            {
-                                keys: "Super + Ctrl + H / L",
-                                action: "Prev / Next workspace"
-                            },
-                            {
-                                keys: "Super + Ctrl + Shift + H / L",
-                                action: "Move window prev / next"
-                            },
-                            {
-                                keys: "Super + W",
-                                action: "WhatsApp workspace"
-                            },
-                            {
-                                keys: "Super + M",
-                                action: "Spotify workspace"
-                            },
-                            {
-                                keys: "Super + S",
-                                action: "Magic workspace"
-                            }
-                        ]
-                    }
-
-                    KeybindSection {
-                        title: "System"
-                        icon: "󰒓"
-                        keybinds: [
-                            {
-                                keys: "Super + B",
-                                action: "Wallpaper Picker"
-                            },
-                            {
-                                keys: "Super + V",
-                                action: "Clipboard History"
-                            },
-                            {
-                                keys: "Super + /",
-                                action: "Keybinds (this window)"
-                            },
-                            {
-                                keys: "Super + End",
-                                action: "Power Menu"
-                            },
-                            {
-                                keys: "Print",
-                                action: "Screenshot"
-                            },
-                            {
-                                keys: "Super + =  /  -",
-                                action: "Zoom in / out"
-                            },
-                            {
-                                keys: "Super + Shift + R",
-                                action: "Reload QuickShell"
-                            }
-                        ]
-                    }
-
-                    KeybindSection {
-                        title: "Media"
-                        icon: "󰎈"
-                        keybinds: [
-                            {
-                                keys: "Volume Keys",
-                                action: "Volume up / down / mute"
-                            },
-                            {
-                                keys: "Brightness Keys",
-                                action: "Brightness up / down"
-                            },
-                            {
-                                keys: "Media Keys",
-                                action: "Play / Pause / Next / Prev"
-                            }
-                        ]
+                        Text {
+                            anchors.centerIn: parent
+                            width: parent.width - 24
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            text: HyprKeybindsService.isLoading
+                                ? "Cargando atajos desde Hyprland..."
+                                : (HyprKeybindsService.lastError || "No se encontraron binds en 70-keybinds.conf.")
+                            color: Config.subtextColor
+                            font.family: Config.font
+                            font.pixelSize: Config.fontSizeNormal
+                        }
                     }
 
                     Item {

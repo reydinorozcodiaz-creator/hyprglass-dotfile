@@ -6,7 +6,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import "../../components/"
+import qs.components
 import qs.services
 import qs.config
 

@@ -15,6 +15,7 @@ FreezeScreen {
     property string mode: "region"
     property var modes: ["region", "window", "screen"]
     property bool editorMode: Quickshell.env("HYPRQUICKFRAME_EDITOR") === "1"
+    property var cropParams: null  // Store crop parameters securely
 
     function saveScreenshot(x, y, width, height) {
         // Calculate global bounds (grim captures the whole desktop starting from top-left-most point)
@@ -38,10 +39,26 @@ FreezeScreen {
         const now = new Date();
         const timestamp = Qt.formatDateTime(now, "yyyy-MM-dd_hh-mm-ss");
         const outputPath = `${picturesDir}/screenshot-${timestamp}.png`;
-        const sattyCommand = `magick "${tempPath}" -crop ${scaledWidth}x${scaledHeight}+${cropX}+${cropY} png:- | satty --filename - --fullscreen --output-filename "${outputPath}" --early-exit --init-tool brush --copy-command wl-copy && rm "${tempPath}"`;
-        const defaultCommand = `magick "${tempPath}" -crop ${scaledWidth}x${scaledHeight}+${cropX}+${cropY} "${outputPath}" && wl-copy --type image/png < "${outputPath}" && notify-send -a "HyprQuickFrame" -i "${outputPath}" -h string:image-path:"${outputPath}" "Screenshot Saved" "Saved to Pictures/Screenshots" && rm "${tempPath}"`;
-        screenshotProcess.command = ["sh", "-c", root.editorMode ? sattyCommand : defaultCommand];
-        screenshotProcess.running = true;
+        
+        // SECURITY FIX: Use Process arrays without shell to prevent command injection
+        // Store params for later use
+        root.cropParams = {
+            cropX: cropX,
+            cropY: cropY,
+            scaledWidth: scaledWidth,
+            scaledHeight: scaledHeight,
+            outputPath: outputPath
+        };
+        
+        // Start magick process (no shell)
+        magickProcess.command = [
+            "magick",
+            tempPath,
+            "-crop",
+            `${scaledWidth}x${scaledHeight}+${cropX}+${cropY}`,
+            outputPath
+        ];
+        magickProcess.running = true;
         root.visible = false;
     }
 
@@ -114,22 +131,82 @@ FreezeScreen {
         onTriggered: root.visible = true
     }
 
+    // SECURITY FIX: Separate processes instead of shell command chain
     Process {
-        id: screenshotProcess
-
+        id: magickProcess
         running: false
+        
+        onExited: (exitCode) => {
+            if (exitCode !== 0) {
+                console.error("[Screenshot] Magick failed with code:", exitCode);
+                cleanupProcess.running = true;
+                return;
+            }
+            
+            // Success - copy to clipboard using wl-copy with file input
+            if (root.cropParams) {
+                wlCopyProcess.running = true;
+            }
+        }
+        
+        stderr: StdioCollector {
+            onStreamFinished: text => {
+                if (text) console.error("[Screenshot] Magick error:", text);
+            }
+        }
+    }
+    
+    // Copy to clipboard using helper script (avoids shell injection)
+    Process {
+        id: wlCopyProcess
+        command: root.cropParams ? [
+            Qt.resolvedUrl("../../scripts/tools/copy-image-to-clipboard.sh").toString().replace("file://", ""),
+            root.cropParams.outputPath
+        ] : []
+        running: false
+        
+        onExited: (exitCode) => {
+            if (exitCode === 0 && root.cropParams) {
+                notifyProcess.running = true;
+            } else {
+                cleanupProcess.running = true;
+            }
+        }
+        
+        stderr: StdioCollector {
+            onStreamFinished: text => {
+                if (text) console.error("[Screenshot] wl-copy error:", text);
+            }
+        }
+    }
+    
+    // Notification process
+    Process {
+        id: notifyProcess
+        command: root.cropParams ? [
+            "notify-send",
+            "-a", "HyprQuickFrame",
+            "-i", root.cropParams.outputPath,
+            "Screenshot Saved",
+            "Saved to Pictures/Screenshots"
+        ] : []
+        running: false
+        
+        onExited: () => {
+            // Clean up temp file
+            cleanupProcess.running = true;
+        }
+    }
+    
+    // Cleanup temp file
+    Process {
+        id: cleanupProcess
+        command: ["rm", "-f", root.tempPath]
+        running: false
+        
         onExited: () => {
             Qt.quit();
         }
-
-        stdout: StdioCollector {
-            onStreamFinished: console.log(this.text)
-        }
-
-        stderr: StdioCollector {
-            onStreamFinished: console.log(this.text)
-        }
-
     }
 
     RegionSelector {

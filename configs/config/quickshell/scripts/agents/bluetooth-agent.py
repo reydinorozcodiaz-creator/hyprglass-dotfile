@@ -8,11 +8,21 @@ import subprocess
 import time
 import os
 
+# SECURITY FIX: Use XDG_RUNTIME_DIR instead of /tmp
+XDG_RUNTIME_DIR = os.environ.get('XDG_RUNTIME_DIR')
+if XDG_RUNTIME_DIR:
+    LOCK_FILE = os.path.join(XDG_RUNTIME_DIR, "quickshell-modules-open.lock")
+else:
+    # Fallback to config dir if XDG_RUNTIME_DIR not available
+    HOME = os.path.expanduser("~")
+    RUNTIME_DIR = os.path.join(HOME, ".config", "quickshell", "data", "runtime")
+    os.makedirs(RUNTIME_DIR, mode=0o700, exist_ok=True)
+    LOCK_FILE = os.path.join(RUNTIME_DIR, "modules-open.lock")
+
 # Configuration
 BUS_NAME = 'org.bluez'
 AGENT_INTERFACE = 'org.bluez.Agent1'
 AGENT_PATH = '/org/bluez/agent'
-LOCK_FILE = "/tmp/QsAnyModuleIsOpen"
 
 def close_quick_settings():
     """

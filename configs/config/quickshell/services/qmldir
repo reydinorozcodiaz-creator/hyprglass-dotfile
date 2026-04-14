@@ -12,10 +12,12 @@ singleton PowerService system/PowerService.qml
 singleton PerformanceProfileService system/PerformanceProfileService.qml
 singleton StateService stores/StateService.qml
 singleton ShortcutService shell/ShortcutService.qml
+singleton HyprKeybindsService shell/HyprKeybindsService.qml
 singleton QuickSettingsService shell/QuickSettingsService.qml
 singleton LauncherService shell/LauncherService.qml
 singleton SystemMonitorService system/SystemMonitorService.qml
 singleton WindowManagerService shell/WindowManagerService.qml
+singleton DependencyCheckService shell/DependencyCheckService.qml
 singleton OsdService shell/OsdService.qml
 singleton WallpaperService appearance/WallpaperService.qml
 singleton WallpaperManagerService appearance/WallpaperManagerService.qml
@@ -25,4 +27,3 @@ singleton ThemeBackendService appearance/ThemeBackendService.qml
 singleton AiService assistant/AiService.qml
 singleton SecretsService stores/SecretsService.qml
 singleton AiHistoryService stores/AiHistoryService.qml
-singleton AiCacheService stores/AiCacheService.qml

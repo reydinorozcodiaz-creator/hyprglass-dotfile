@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import qs.config
@@ -15,27 +14,52 @@ Item {
     readonly property int activeWidth: 54
     readonly property int activeHeight: 34
     readonly property int itemSpacing: 6
-    readonly property int visibleCount: 7
-    readonly property int totalWorkspaces: 10
 
-    // --- Visible Workspaces Array (only occupied + active) ---
-    property var visibleWorkspaceIds: {
+    // --- Visible Workspaces Model ---
+    ListModel {
+        id: workspacesModel
+    }
+
+    function syncWorkspacesModel() {
         let ids = [];
-        // Always include active workspace
         if (activeId > 0) {
             ids.push(activeId);
         }
-        // Add all occupied workspaces
+
         for (let wsId in occupiedWorkspaces) {
             let id = parseInt(wsId);
-            if (id > 0 && id !== activeId && occupiedWorkspaces[wsId] === true) {
+            if (id > 0 && id !== activeId && occupiedWorkspaces[wsId] === true)
                 ids.push(id);
+        }
+
+        ids.sort((a, b) => a - b);
+
+        for (let i = workspacesModel.count - 1; i >= 0; i--) {
+            if (!ids.includes(workspacesModel.get(i).workspaceId)) {
+                workspacesModel.remove(i);
             }
         }
-        // Sort numerically
-        ids.sort((a, b) => a - b);
-        return ids;
+
+        for (let i = 0; i < ids.length; i++) {
+            let targetId = ids[i];
+            let found = false;
+            for (let j = 0; j < workspacesModel.count; j++) {
+                if (workspacesModel.get(j).workspaceId === targetId) {
+                    found = true;
+                    if (j !== i) {
+                        workspacesModel.move(j, i, 1);
+                    }
+                    break;
+                }
+            }
+            if (!found) {
+                workspacesModel.insert(i, { workspaceId: targetId });
+            }
+        }
     }
+
+    onActiveIdChanged: syncWorkspacesModel()
+    onOccupiedWorkspacesChanged: syncWorkspacesModel()
 
     // --- Monitor Logic ---
     readonly property var parentWindow: QsWindow.window
@@ -48,7 +72,6 @@ Item {
     }
 
     readonly property string monitorName: currentMonitor?.name ?? ""
-    property var activeWorkspace: currentMonitor?.activeWorkspace ?? null
 
     // --- Special Workspace Detection ---
     property string manualSpecialName: ""
@@ -61,26 +84,9 @@ Item {
     }
 
     // --- Normal Workspace Math ---
-    property int activeId: (activeWorkspace && activeWorkspace.id > 0) ? activeWorkspace.id : 1
-    property int monitorOffset: Math.floor((activeId - 1) / 100) * 100
-    readonly property int relativeActiveId: Math.max(1, Math.min(activeId - monitorOffset, totalWorkspaces))
+    property int activeId: 1
 
-    // --- Layout Dimensions ---
-    readonly property real viewportWidth: (itemWidth * visibleCount) + (activeWidth - itemWidth) + (itemSpacing * (visibleCount - 1))
-    readonly property real itemStep: itemWidth + itemSpacing
-
-    // Calculate visible workspaces count dynamically
-    property int visibleWorkspacesCount: visibleWorkspaceIds.length
-
-    // Dynamic width based on visible workspaces
-    readonly property real dynamicWidth: {
-        if (visibleWorkspacesCount === 0) return 0;
-        let baseWidth = (itemWidth * visibleWorkspacesCount) + (itemSpacing * Math.max(0, visibleWorkspacesCount - 1));
-        // Add extra width for the active workspace
-        return baseWidth + (activeWidth - itemWidth);
-    }
-
-    implicitWidth: isSpecialWorkspace ? specialIndicator.width : dynamicWidth
+    implicitWidth: isSpecialWorkspace ? specialIndicator.width : workspacesRow.implicitWidth
     implicitHeight: activeHeight
 
     // --- Special Workspaces Config ---
@@ -126,23 +132,67 @@ Item {
         }
     }
 
-    // --- Scroll Logic ---
-    readonly property int targetIndex: {
-        let idx = visibleWorkspaceIds.indexOf(activeId);
-        return idx >= 0 ? idx : 0;
-    }
-    readonly property real targetScrollX: 0  // No scroll needed, always show all
-
-    property real animatedScrollX: targetScrollX
-    Behavior on animatedScrollX {
-        NumberAnimation {
-            duration: Config.animDurationLong
-            easing.type: Easing.OutQuint
-        }
-    }
-
     // --- Occupied Workspaces ---
     property var occupiedWorkspaces: ({})
+
+    function parseWorkspaceId(data) {
+        const value = String(data ?? "");
+        const firstPart = value.split(",")[0];
+        const parsedId = Number(firstPart);
+        return parsedId > 0 ? parsedId : 0;
+    }
+
+    function setWorkspaceOccupied(workspaceId, occupied) {
+        const targetId = Number(workspaceId);
+        if (!Number.isInteger(targetId) || targetId <= 0)
+            return;
+
+        const key = String(targetId);
+        const nextState = occupied === true;
+        const currentState = occupiedWorkspaces[key] === true;
+        if (currentState === nextState)
+            return;
+
+        const nextWorkspaces = Object.assign({}, occupiedWorkspaces);
+        if (nextState)
+            nextWorkspaces[key] = true;
+        else
+            delete nextWorkspaces[key];
+
+        occupiedWorkspaces = nextWorkspaces;
+    }
+
+    function syncActiveWorkspace() {
+        const nextId = Number(root.currentMonitor?.activeWorkspace?.id ?? 0);
+        const normalizedId = nextId > 0 ? nextId : 1;
+
+        if (root.activeId !== normalizedId)
+            root.activeId = normalizedId;
+    }
+
+    function activateWorkspace(workspaceId) {
+        const targetId = Number(workspaceId);
+        if (!Number.isInteger(targetId) || targetId <= 0)
+            return;
+
+        manualSpecialName = "";
+        if (activeId !== targetId)
+            activeId = targetId;
+        setWorkspaceOccupied(targetId, true);
+    }
+
+    function focusWorkspace(workspaceId) {
+        const targetId = Number(workspaceId);
+        if (!Number.isInteger(targetId) || targetId <= 0)
+            return;
+
+        const currentId = root.activeId;
+        if (currentId === targetId)
+            return;
+
+        Hyprland.dispatch("focusworkspaceoncurrentmonitor " + targetId);
+    }
+
     function updateOccupiedWorkspaces() {
         if (!Hyprland || !Hyprland.workspaces)
             return;
@@ -154,12 +204,14 @@ Item {
         occupiedWorkspaces = newObj;
     }
 
-    Component.onCompleted: updateOccupiedWorkspaces()
+    onCurrentMonitorChanged: {
+        root.syncActiveWorkspace();
+        root.updateOccupiedWorkspaces();
+    }
 
-    Timer {
-        id: occupiedUpdateTimer
-        interval: 10
-        onTriggered: root.updateOccupiedWorkspaces()
+    Component.onCompleted: {
+        root.syncActiveWorkspace();
+        root.updateOccupiedWorkspaces();
     }
 
     // --- Event Handling ---
@@ -176,13 +228,28 @@ Item {
                     root.manualSpecialName = wsName;
                 }
             }
-            if (event.name === "workspace") {
-                root.manualSpecialName = "";
-                occupiedUpdateTimer.restart();
+            if (event.name === "workspace" || event.name === "workspacev2")
+                root.activateWorkspace(root.parseWorkspaceId(event.data));
+
+            if (event.name === "focusedmonv2") {
+                const parts = String(event.data ?? "").split(",");
+                const targetMonitor = parts[0] || "";
+                const workspaceId = Number(parts[1] || 0);
+                if (targetMonitor === root.monitorName)
+                    root.activateWorkspace(workspaceId);
             }
-            const refreshEvents = ["createworkspace", "destroyworkspace", "movewindow", "openwindow", "closewindow"];
-            if (refreshEvents.includes(event.name))
-                occupiedUpdateTimer.restart();
+
+            if (event.name === "createworkspace" || event.name === "createworkspacev2")
+                root.setWorkspaceOccupied(root.parseWorkspaceId(event.data), true);
+
+            if (event.name === "destroyworkspace" || event.name === "destroyworkspacev2")
+                root.setWorkspaceOccupied(root.parseWorkspaceId(event.data), false);
+
+            if (event.name === "openwindow" || event.name === "openwindowv2") {
+                const parts = String(event.data ?? "").split(",");
+                if (parts.length > 1)
+                    root.setWorkspaceOccupied(Number(parts[1]), true);
+            }
         }
     }
 
@@ -285,143 +352,79 @@ Item {
         anchors.centerIn: parent
         clip: false
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Config.animDuration
-            }
-        }
-
         Item {
             id: container
-            x: 0  // No scroll, always starts at 0
-            width: root.dynamicWidth
+            width: workspacesRow.implicitWidth
             height: parent.height
 
-            Repeater {
-                model: root.visibleWorkspaceIds
-                delegate: Rectangle {
-                    id: workspaceItem
-                    required property int index
-                    required property int modelData
-                    readonly property int workspaceId: modelData
-                    readonly property bool isActive: workspaceId === root.activeId
-                    readonly property bool isEmpty: false  // All visible workspaces are occupied
+            Row {
+                id: workspacesRow
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: root.itemSpacing
 
-                    x: {
-                        let baseX = 0;
-                        // Calculate position based on index in visible array
-                        for (let i = 0; i < index; i++) {
-                            baseX += (root.visibleWorkspaceIds[i] === root.activeId ? root.activeWidth : root.itemWidth) + root.itemSpacing;
-                        }
-                        return baseX;
-                    }
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: isActive ? root.activeWidth : root.itemWidth
-                    height: isActive ? root.activeHeight : root.itemHeight
-                    radius: width / 2.4
-                    color: isActive ? Config.accentColor : Config.surface2Color
-                    border.width: isActive ? 0 : 1
-                    border.color: Qt.alpha(Config.textColor, 0.2)
-                    opacity: workspaceHover.hovered ? 0.8 : 1.0
-                    visible: true
+                Repeater {
+                    model: workspacesModel
+                    delegate: Rectangle {
+                        id: workspaceItem
+                        // Since we append { workspaceId: X } to ListModel, it exposes workspaceId directly
+                        required property int workspaceId
+                        readonly property bool isActive: workspaceId === root.activeId
 
-                    Behavior on x {
-                        NumberAnimation {
-                            duration: Config.animDurationLong
-                            easing.type: Easing.OutExpo
-                        }
-                    }
-                    Behavior on width {
-                        NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutExpo
-                        }
-                    }
-                    Behavior on height {
-                        NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutExpo
-                        }
-                    }
-                    Behavior on radius {
-                        NumberAnimation {
-                            duration: 500
-                            easing.type: Easing.OutExpo
-                        }
-                    }
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: 500
-                            easing.type: Easing.OutExpo
-                        }
-                    }
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: 500
-                            easing.type: Easing.OutExpo
-                        }
-                    }
-                    Behavior on border.width {
-                        NumberAnimation {
-                            duration: 400
-                            easing.type: Easing.OutExpo
-                        }
-                    }
-                    Behavior on border.color {
-                        ColorAnimation {
-                            duration: 400
-                            easing.type: Easing.OutExpo
-                        }
-                    }
+                        width: isActive ? root.activeWidth : root.itemWidth
+                        height: isActive ? root.activeHeight : root.itemHeight
+                        radius: width / 2.4
+                        color: isActive ? Config.accentColor : Config.surface2Color
+                        border.width: isActive ? 0 : 1
+                        border.color: Qt.alpha(Config.textColor, 0.2)
+                        opacity: workspaceHover.hovered ? 0.8 : 1.0
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: workspaceItem.workspaceId
-                        font.family: Config.font
-                        font.pixelSize: Config.fontSizeLarge
-                        font.bold: workspaceItem.isActive
-                        color: workspaceItem.isActive ? Config.textReverseColor : Config.textColor
-                        opacity: 1.0
-                        scale: workspaceItem.isActive ? 1.0 : 0.9
-                        
-                        Behavior on opacity {
+                        Behavior on width {
                             NumberAnimation {
-                                duration: 400
-                                easing.type: Easing.OutExpo
-                            }
-                        }
-                        Behavior on scale {
-                            NumberAnimation {
-                                duration: 500
-                                easing.type: Easing.OutBack
-                            }
-                        }
-                        Behavior on font.pixelSize {
-                            NumberAnimation {
-                                duration: 400
+                                duration: Config.animDuration
                                 easing.type: Easing.OutExpo
                             }
                         }
                         Behavior on color {
                             ColorAnimation {
-                                duration: 400
+                                duration: Config.animDuration
+                            }
+                        }
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Config.animDuration
                                 easing.type: Easing.OutExpo
                             }
                         }
-                    }
 
-                    TapHandler {
-                        onTapped: {
-                            if (!workspaceItem.isActive)
-                                Hyprland.dispatch("workspace " + workspaceItem.workspaceId);
+                        Text {
+                            anchors.centerIn: parent
+                            text: workspaceItem.workspaceId
+                            font.family: Config.font
+                            font.pixelSize: Config.fontSizeLarge
+                            font.bold: workspaceItem.isActive
+                            color: workspaceItem.isActive ? Config.textReverseColor : Config.textColor
+                            scale: workspaceItem.isActive ? 1.0 : 0.92
+
+                            Behavior on scale {
+                                NumberAnimation {
+                                    duration: Config.animDuration
+                                    easing.type: Easing.OutBack
+                                }
+                            }
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Config.animDuration
+                                }
+                            }
                         }
-                    }
 
-                    HoverHandler {
-                        id: workspaceHover
-                        cursorShape: {
-                            if (!workspaceItem.isActive)
-                                return Qt.PointingHandCursor;
+                        TapHandler {
+                            onTapped: root.focusWorkspace(workspaceItem.workspaceId)
+                        }
+
+                        HoverHandler {
+                            id: workspaceHover
+                            cursorShape: !workspaceItem.isActive ? Qt.PointingHandCursor : Qt.ArrowCursor
                         }
                     }
                 }

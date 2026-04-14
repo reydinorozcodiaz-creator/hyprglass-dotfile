@@ -90,9 +90,9 @@ Singleton {
 
         onTriggered: {
             const nowMs = Date.now();
-            for (let i = 0; i < root.popups.length; i++) {
-                const wrapper = root.popups[i];
-                if (wrapper)
+            for (let i = 0; i < root.notifications.length; i++) {
+                const wrapper = root.notifications[i];
+                if (wrapper && wrapper.popup)
                     wrapper.refreshLifecycle(nowMs);
             }
         }
@@ -103,10 +103,19 @@ Singleton {
     // ========================================================================
 
     readonly property list<NotifWrapper> notifications: []
-    readonly property list<NotifWrapper> popups: notifications.filter(n => n && n.popup)
+    property int activePopupCount: 0
+
+    function _updateActivePopupCount() {
+        let count = 0;
+        for (let i = 0; i < notifications.length; i++) {
+            if (notifications[i] && notifications[i].popup) count++;
+        }
+        activePopupCount = count;
+    }
+
+    onNotificationsChanged: Qt.callLater(_updateActivePopupCount)
 
     readonly property int count: notifications.length
-    readonly property int activePopupCount: popups.length
 
     property int hoveredNotificationId: -1
     property int relativeTimeTick: 0
@@ -171,8 +180,8 @@ Singleton {
                 if (showPopup) {
                     wrapper.startLifecycle();
                 }
-                
-                console.log("[Notif] Wrapper created. Total:", root.notifications.length, "Popups:", root.popups.length, "DND:", root.dndEnabled);
+
+                console.log("[Notif] Wrapper created. Total:", root.notifications.length, "Popups:", root.activePopupCount, "DND:", root.dndEnabled);
             }
         }
     }
@@ -185,6 +194,7 @@ Singleton {
         id: wrapper
 
         property bool popup: false
+        onPopupChanged: Qt.callLater(root._updateActivePopupCount)
 
         // ====== TICK TIMER SYSTEM (for real pause) ======
         property int totalTime: Config.notifTimeout

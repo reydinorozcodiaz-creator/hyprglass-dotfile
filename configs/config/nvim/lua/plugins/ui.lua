@@ -33,10 +33,29 @@ return {
     config = function()
       require("bufferline").setup({
         options = {
+          mode = "buffers",
           style_preset = require("bufferline").style_preset.minimal,
           always_show_bufferline = true,
-          separator_style = "thin",
+          separator_style = "slant",
           numbers = "ordinal",
+          offsets = {
+            {
+              filetype = "NvimTree",
+              text = "Explorer",
+              text_align = "left",
+              separator = true,
+            },
+          },
+          show_buffer_icons = true,
+          show_buffer_close_icons = true,
+          show_close_icon = false,
+          show_tab_indicators = true,
+          persist_buffer_sort = true,
+          enforce_regular_tabs = false,
+          always_show_bufferline = true,
+          indicator = {
+            style = "underline",
+          },
         },
       })
 
@@ -67,23 +86,28 @@ return {
       require("lualine").setup({
         options = {
           theme = "ayu",
-          component_separators = "|",
-          section_separators = "",
+          component_separators = "",
+          section_separators = { left = "", right = "" },
+          globalstatus = true,
+          disabled_filetypes = { statusline = { "dashboard", "alpha", "starter" } },
         },
         sections = {
-          lualine_a = {
-            {
-              "mode",
-              color = function()
-                return mode_colors[vim.fn.mode():sub(1, 1)] or { bg = "#39BAE6", fg = "#0D1017" }
-              end,
-            },
+          lualine_a = { { "mode", separator = { left = "" }, right_padding = 2 } },
+          lualine_b = { "branch", "diff" },
+          lualine_c = {
+            { "filetype", icon_only = true, separator = "", padding = { left = 1, right = 0 } },
+            { "filename", path = 1, symbols = { modified = "  ", readonly = "  ", unnamed = "  " } },
           },
-          lualine_b = { "branch", "diff", "diagnostics" },
-          lualine_c = { { "filename", path = 1 } },
-          lualine_x = { "encoding", "fileformat", "filetype" },
+          lualine_x = {
+            {
+              "diagnostics",
+              sources = { "nvim_diagnostic" },
+              symbols = { error = " ", warn = " ", info = " ", hint = "󰌵 " },
+            },
+            "encoding",
+          },
           lualine_y = { "progress" },
-          lualine_z = { "location" },
+          lualine_z = { { "location", separator = { right = "" }, left_padding = 2 } },
         },
       })
     end,
@@ -262,25 +286,32 @@ return {
         cmdline = {
           enabled = true,
           view = "cmdline_popup",
+          format = {
+            cmdline = { pattern = "^:", icon = "", lang = "vim" },
+            search_down = { kind = "search", pattern = "^/", icon = " ", lang = "regex" },
+            search_up = { kind = "search", pattern = "^%?", icon = " ", lang = "regex" },
+          },
         },
         views = {
           cmdline_popup = {
-            border = { style = "rounded" },
-            position = { row = "40%", col = "50%" },
+            border = { style = "rounded", padding = { 0, 1 } },
+            position = { row = "30%", col = "50%" },
             size = { width = 60, height = "auto" },
           },
           popupmenu = {
-            border = { style = "rounded" },
-            position = { row = "43%", col = "50%" },
             relative = "editor",
+            position = { row = "33%", col = "50%" },
             size = { width = 60, height = 10 },
+            border = { style = "rounded", padding = { 0, 1 } },
+            win_options = { winhighlight = { Normal = "NormalFloat", FloatBorder = "FloatBorder" } },
           },
         },
       })
 
       require("notify").setup({
         background_colour = "#0D1017",
-        render = "compact",
+        render = "wrapped-compact",
+        stages = "fade_in_slide_out",
         timeout = 3000,
         top_down = false,
       })
@@ -289,6 +320,7 @@ return {
 
   {
     "nvimdev/dashboard-nvim",
+    enabled = false,
     event = "VimEnter",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
@@ -520,10 +552,21 @@ return {
       scratch = { enabled = true },
       words = { enabled = false },
       scroll = { enabled = false },
-      notifier = { enabled = false },
+      notifier = {
+        enabled = true,
+        timeout = 3000,
+        style = "fancy",
+      },
       statuscolumn = { enabled = true },
-      indent = { enabled = false },
-      dashboard = { enabled = false },
+      indent = { enabled = true },
+      dashboard = {
+        enabled = true,
+        sections = {
+          { section = "header" },
+          { section = "keys", gap = 1, padding = 1 },
+          { section = "startup" },
+        },
+      },
     },
     keys = {
       {

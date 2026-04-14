@@ -261,6 +261,23 @@ apply_runtime_hypr_env() {
     hyprctl keyword env "HYPRCURSOR_SIZE,$CURSOR_SIZE" >/dev/null 2>&1 || true
 }
 
+apply_flatpak_sync() {
+    # Solo intentamos sincronizar si flatpak está instalado
+    command -v flatpak >/dev/null 2>&1 || return 0
+
+    # Permitir que las aplicaciones Flatpak accedan a los temas del usuario
+    flatpak override --user --filesystem=xdg-config/gtk-3.0:ro || true
+    flatpak override --user --filesystem=xdg-config/gtk-4.0:ro || true
+    flatpak override --user --filesystem=~/.icons:ro || true
+    flatpak override --user --filesystem=/usr/share/icons:ro || true
+    
+    # Sincronizar variables de entorno de temas
+    flatpak override --user --env=GTK_THEME="$GTK_THEME" || true
+    flatpak override --user --env=ICON_THEME="$ICON_THEME" || true
+    flatpak override --user --env=XCURSOR_THEME="$CURSOR_THEME" || true
+    flatpak override --user --env=XCURSOR_SIZE="$CURSOR_SIZE" || true
+}
+
 apply_theme() {
     load_theme_state
     create_gtk_configs
@@ -268,6 +285,7 @@ apply_theme() {
     apply_gsettings
     write_hypr_env_conf
     apply_runtime_hypr_env
+    apply_flatpak_sync
 }
 
 show_status() {

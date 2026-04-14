@@ -33,6 +33,10 @@ ShellRoot {
     // =========================================================================
 
     property bool screenshotActive: false
+    
+    // ARCHITECTURE FIX: Limit bluetooth agent restart attempts
+    property int bluetoothCrashCount: 0
+    readonly property int maxBluetoothCrashes: 5
 
     // =========================================================================
     // BLUETOOTH AGENT
@@ -52,11 +56,22 @@ ShellRoot {
             onRead: data => console.error("[BluetoothAgent]: " + data)
         }
 
-        // Auto-restart if the agent dies unexpectedly
+        // ARCHITECTURE FIX: Auto-restart with max retries to prevent infinite loop
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
-                console.warn("[BluetoothAgent] Exited with code", exitCode, "— restarting in 3s");
+                root.bluetoothCrashCount++;
+                
+                if (root.bluetoothCrashCount >= root.maxBluetoothCrashes) {
+                    console.error("[BluetoothAgent] Max crash limit reached (" + root.maxBluetoothCrashes + "), disabling auto-restart");
+                    OsdService.showMessage("🔴", "Bluetooth agent disabled (too many crashes)");
+                    return;
+                }
+                
+                console.warn("[BluetoothAgent] Crash " + root.bluetoothCrashCount + "/" + root.maxBluetoothCrashes + ", exited with code " + exitCode + " — restarting in 3s");
                 bluetoothAgentRestartTimer.restart();
+            } else {
+                // Successful exit, reset counter
+                root.bluetoothCrashCount = 0;
             }
         }
     }
@@ -66,7 +81,7 @@ ShellRoot {
         interval: 3000
         repeat: false
         onTriggered: {
-            console.log("[BluetoothAgent] Restarting...");
+            console.log("[BluetoothAgent] Restarting (attempt " + (root.bluetoothCrashCount + 1) + ")...");
             bluetoothAgent.running = true;
         }
     }
@@ -79,8 +94,16 @@ ShellRoot {
     Bar {}
 
     Loader {
+        id: orbitLoader
         active: AiService.windowVisible
-        source: "./modules/tools/orbit/AiChatWindow.qml"
+        source: "./modules/tools/orbit/OrbitChatWindow.qml"
+        
+        onStatusChanged: {
+            if (status === Loader.Ready)
+                console.log("[Shell] Orbit window loaded");
+            else if (status === Loader.Error)
+                console.error("[Shell] Error loading Orbit: " + source);
+        }
     }
 
     // Notifications Overlay - Shows notification popups
@@ -157,10 +180,13 @@ ShellRoot {
         source: "./modules/appearance/wallpaper/WallpaperPicker.qml"
     }
 
-    // Clipboard History
     Loader {
+        id: clipboardLoader
         active: ClipboardService.visible
         source: "./modules/tools/clipboard/ClipboardHistory.qml"
+        
+        onActiveChanged: console.log("[Shell] Clipboard loader active:", active)
+        onStatusChanged: console.log("[Shell] Clipboard loader status:", status)
     }
 
     // Keybinds Overlay
@@ -303,7 +329,10 @@ ShellRoot {
         name: "clipboard_history"
         description: "Clipboard history"
 
-        onPressed: ClipboardService.toggle()
+        onPressed: {
+            console.log("[Shell] Clipboard shortcut pressed");
+            ClipboardService.toggle();
+        }
     }
 
     // Shortcut: Orbit

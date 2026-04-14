@@ -6,9 +6,9 @@ import QtQuick.Layouts
 import qs.config
 import qs.services
 import qs.components
+import "../calendar/"
 import "../quickSettings/"
 import "../notifications/"
-import "../calendar/"
 import "../../tools/systemMonitor/"
 import "../../tools/orbit/"
 
@@ -22,22 +22,21 @@ Scope {
         model: Quickshell.screens
 
         PanelWindow {
+            id: barWindow
             required property var modelData
 
             property bool enableAutoHide: StateService.get("bar.autoHide", false)
             // When hidden, leave 1px visible at the top to catch mouse hover
             readonly property int hiddenMargin: -(height - 1)
 
-            // NameSpace
+            // NameSpace para Hyprland (coincide con tu regla qs_.*)
             WlrLayershell.namespace: "qs_modules"
+            WlrLayershell.layer: WlrLayer.Top
 
             // --- BAR CONFIGURATION ---
             implicitHeight: StateService.get("bar.height", 44)
             color: "transparent"
             screen: modelData
-
-            // Overlay ensures it stays above games/fullscreen
-            // WlrLayershell.layer: WlrLayer.Overlay
 
             // Set the exclusion mode
             exclusionMode: enableAutoHide ? ExclusionMode.Ignore : ExclusionMode.Normal
@@ -52,8 +51,6 @@ Scope {
             }
 
             // --- AUTOHIDE LOGIC ---
-            // If mouse is hovering, margin is 0 (show everything).
-            // Otherwise, hiddenMargin hides the bar leaving 1px to catch the mouse.
             margins.top: {
                 if (WindowManagerService.anyModuleOpen || !enableAutoHide || mouseSensor.hovered)
                     return 0;
@@ -61,7 +58,6 @@ Scope {
                 return hiddenMargin;
             }
 
-            // Smooth window movement animation
             Behavior on margins.top {
                 NumberAnimation {
                     duration: Config.animDuration
@@ -69,9 +65,6 @@ Scope {
                 }
             }
 
-            // --- MOUSE SENSOR ---
-            // Covers the entire window. Since the window never "disappears" (only moves off-screen),
-            // the remaining 1px still detects the mouse.
             HoverHandler {
                 id: mouseSensor
             }
@@ -90,14 +83,8 @@ Scope {
                     radius: barContent.radius
                     opacity: 0.35
                     gradient: Gradient {
-                        GradientStop {
-                            position: 0.0
-                            color: Qt.alpha(Config.textColor, 0.12)
-                        }
-                        GradientStop {
-                            position: 1.0
-                            color: Qt.alpha(Config.textColor, 0.02)
-                        }
+                        GradientStop { position: 0.0; color: Qt.alpha(Config.textColor, 0.12) }
+                        GradientStop { position: 1.0; color: Qt.alpha(Config.textColor, 0.02) }
                     }
                 }
 
@@ -130,7 +117,7 @@ Scope {
                     spacing: root.gapIn
 
                     ClipboardButton {}
-                    AiChatButton {}
+                    OrbitChatbutton {}
                     TrayWidget {}
                     QuickSettingsButton {}
                     NotificationButton {}

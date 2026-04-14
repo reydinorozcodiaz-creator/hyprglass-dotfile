@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.config
@@ -42,10 +41,6 @@ BarButton {
             }
         }
     }
-
-    ToolTip.visible: root.hovered
-    ToolTip.text: "Notifications (Right-click for DND)"
-    ToolTip.delay: 500
 
     // Lazy-load the window only when opened by the user
     Loader {

@@ -69,27 +69,27 @@ Item {
                         spacing: 6
 
                         Text {
-                            text: "Proveedor: " + (AiService.provider === "copilot"
-                                ? "GitHub Copilot"
-                                : AiService.provider === "zeroclaw"
-                                    ? "ZeroClaw"
-                                    : AiService.provider.charAt(0).toUpperCase() + AiService.provider.slice(1))
+                            text: "Backend: " + AiService.backendStatusLabel
                             font.family: Config.font
                             font.pixelSize: Config.fontSizeSmall
                             color: Config.textColor
+                            wrapMode: Text.Wrap
                         }
 
                         Text {
-                            text: "Modelo: " + (AiService.model || "Sin configurar")
+                            text: "Agente: " + (AiService.activeAgent
+                                ? AiService.activeAgentDisplayName + (AiService.activeAgentModelLabel !== "" ? " · " + AiService.activeAgentModelLabel : "")
+                                : "Sin seleccionar")
                             font.family: Config.font
                             font.pixelSize: Config.fontSizeSmall
                             color: Config.subtextColor
+                            wrapMode: Text.Wrap
                         }
 
                         Text {
                             text: AiService.needsSetup
-                                ? "Estado: faltan credenciales o configuracion basica."
-                                : "Estado: listo para usar."
+                                ? "Estado: falta un agente listo o la conexion con OpenFang."
+                                : "Estado: Orbit listo para usar con OpenFang."
                             font.family: Config.font
                             font.pixelSize: Config.fontSizeSmall
                             color: AiService.needsSetup ? Config.warningColor : Config.successColor

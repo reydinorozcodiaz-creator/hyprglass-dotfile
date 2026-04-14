@@ -50,8 +50,8 @@ Scope {
                 id: notifListView
                 anchors.fill: parent
 
-                // Uses the list of active popups
-                model: NotificationService.popups
+                // Uses the main list of notifications to preserve delegates natively
+                model: NotificationService.notifications
 
                 spacing: 0
                 interactive: false
@@ -70,6 +70,13 @@ Scope {
 
                     wrapper: modelData
                     popupMode: true
+
+                    visible: wrapper && wrapper.popup
+                    height: visible ? implicitHeight : 0
+                    opacity: visible ? 1 : 0
+
+                    Behavior on height { NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuad } }
+                    Behavior on opacity { NumberAnimation { duration: Config.animDurationShort } }
                 }
             }
         }

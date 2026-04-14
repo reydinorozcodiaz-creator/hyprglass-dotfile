@@ -6,6 +6,34 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Bluetooth
 
+/**
+ * BluetoothService - Manages Bluetooth adapter and device connections
+ * 
+ * @singleton
+ * 
+ * Key Properties:
+ * - adapter: BluetoothAdapter - System's default Bluetooth adapter (null if none)
+ * - isPowered: bool - Whether Bluetooth radio is powered on
+ * - isDiscovering: bool - Whether currently scanning for devices
+ * - isDiscoverable: bool - Whether adapter is visible to other devices
+ * - devicesList: array - Sorted list of all known devices (connected first, then paired, then alphabetical)
+ * - connectedDevices: array - Filtered list of currently connected devices
+ * - systemIcon: string - Icon representing current Bluetooth status
+ * 
+ * Key Methods:
+ * - togglePower() - Toggle Bluetooth on/off via bluetoothctl
+ * - startDiscovery() - Start 20-second device discovery scan
+ * - stopDiscovery() - Stop active discovery scan
+ * - connect(address: string) - Connect to device by MAC address
+ * - disconnect(address: string) - Disconnect device
+ * - pair(address: string) - Initiate pairing with device
+ * - unpair(address: string) - Remove device from paired list
+ * 
+ * Usage:
+ *   BluetoothService.togglePower()
+ *   BluetoothService.connect("AA:BB:CC:DD:EE:FF")
+ *   for (let dev of BluetoothService.devicesList) { ... }
+ */
 Singleton {
     id: root
 
@@ -64,7 +92,7 @@ Singleton {
         return count + " devices";
     }
 
-    // The smart device list
+    // The smart device list.
     readonly property var devicesList: {
         if (!adapter || !adapter.devices)
             return [];
@@ -74,7 +102,7 @@ Singleton {
         let list = Array.from(adapter.devices.values);
 
         // Sorting function
-        return list.sort((a, b) => {
+        const sorted = list.sort((a, b) => {
             // Connected devices appear first at the top
             if (a.connected && !b.connected)
                 return -1;
@@ -94,6 +122,8 @@ Singleton {
             const nameB = (b.alias || b.name || "").toLowerCase();
             return nameA.localeCompare(nameB);
         });
+        
+        return sorted;
     }
 
     // Addresses currently going through the pairing flow.

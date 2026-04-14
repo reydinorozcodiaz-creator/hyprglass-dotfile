@@ -46,6 +46,15 @@ PanelWindow {
         return before + "<font color=\"" + matchColorCss + "\"><b>" + match + "</b></font>" + after;
     }
 
+    function resultTypeLabel(item) {
+        const kind = item?.kind || "app";
+        if (kind === "intent")
+            return "Action";
+        if (kind === "action")
+            return "Shortcut";
+        return "App";
+    }
+
     anchors {
         top: true
         bottom: true
@@ -175,6 +184,8 @@ PanelWindow {
                             }
 
                             Keys.onLeftPressed: event => {
+                                if (LauncherService.query.trim() !== "")
+                                    return;
                                 if (LauncherService.selectedIndex > 0) {
                                     LauncherService.selectedIndex--;
                                     event.accepted = true;
@@ -182,6 +193,8 @@ PanelWindow {
                             }
 
                             Keys.onRightPressed: event => {
+                                if (LauncherService.query.trim() !== "")
+                                    return;
                                 if (LauncherService.selectedIndex < LauncherService.filteredApps.length - 1) {
                                     LauncherService.selectedIndex++;
                                     event.accepted = true;
@@ -189,6 +202,12 @@ PanelWindow {
                             }
 
                             Keys.onUpPressed: event => {
+                                if (LauncherService.query.trim() !== "") {
+                                    if (LauncherService.selectedIndex > 0)
+                                        LauncherService.selectedIndex--;
+                                    event.accepted = true;
+                                    return;
+                                }
                                 const cols = Math.max(1, Math.floor(grid.width / grid.cellWidth));
                                 const newIndex = LauncherService.selectedIndex - cols;
                                 if (newIndex >= 0)
@@ -197,6 +216,12 @@ PanelWindow {
                             }
 
                             Keys.onDownPressed: event => {
+                                if (LauncherService.query.trim() !== "") {
+                                    if (LauncherService.selectedIndex < LauncherService.filteredApps.length - 1)
+                                        LauncherService.selectedIndex++;
+                                    event.accepted = true;
+                                    return;
+                                }
                                 const cols = Math.max(1, Math.floor(grid.width / grid.cellWidth));
                                 const newIndex = LauncherService.selectedIndex + cols;
                                 if (newIndex < LauncherService.filteredApps.length)
@@ -245,6 +270,7 @@ PanelWindow {
                         reuseItems: true
                         cacheBuffer: 240
                         boundsBehavior: Flickable.StopAtBounds
+                        visible: LauncherService.query.trim() === ""
                         model: LauncherService.filteredApps
                         currentIndex: LauncherService.selectedIndex
                         cellWidth: Math.max(118, Math.floor(width / Math.max(1, desiredColumns)))
@@ -262,6 +288,7 @@ PanelWindow {
                         property bool isHovered: tileMouse.containsMouse
                         property bool isAction: (modelData?.kind || "app") === "action"
                         property bool isPinned: LauncherService.isPinned(modelData?.id || "")
+                        property bool canPin: (modelData?.kind || "app") !== "intent"
 
                         Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -300,7 +327,7 @@ PanelWindow {
                             }
 
                             Rectangle {
-                                visible: delegateItem.isPinned
+                                visible: delegateItem.canPin && delegateItem.isPinned
                                 width: 20
                                 height: 20
                                 radius: 10
@@ -377,7 +404,7 @@ PanelWindow {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
                             onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) {
+                                if (mouse.button === Qt.RightButton && delegateItem.canPin) {
                                     LauncherService.togglePinned(delegateItem.modelData?.id || "");
                                     return;
                                 }
@@ -392,6 +419,198 @@ PanelWindow {
                         }
 
                         onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
+
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+
+                            contentItem: Rectangle {
+                                implicitWidth: 4
+                                radius: 2
+                                color: Qt.alpha(Config.surface2Color, 0.45)
+                            }
+
+                            background: Rectangle {
+                                implicitWidth: 4
+                                color: "transparent"
+                            }
+                        }
+                    }
+
+                    ListView {
+                        id: searchResults
+
+                        anchors.fill: parent
+                        visible: LauncherService.query.trim() !== ""
+                        clip: true
+                        reuseItems: true
+                        cacheBuffer: 320
+                        spacing: 10
+                        boundsBehavior: Flickable.StopAtBounds
+                        model: LauncherService.filteredApps
+                        currentIndex: LauncherService.selectedIndex
+
+                        delegate: Item {
+                            id: rowItem
+                            required property int index
+                            required property var modelData
+
+                            width: searchResults.width
+                            height: 72
+
+                            property bool isSelected: index === LauncherService.selectedIndex
+                            property bool isHovered: rowMouse.containsMouse
+                            property bool isAction: (modelData?.kind || "app") !== "app"
+                            property bool isPinned: LauncherService.isPinned(modelData?.id || "")
+                            property bool canPin: (modelData?.kind || "app") !== "intent"
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 18
+                                color: rowItem.isSelected
+                                    ? root.selectionColor
+                                    : (rowItem.isHovered ? Qt.alpha(root.hoverColor, 1.1) : "transparent")
+                                border.width: rowItem.isSelected ? 1 : (rowItem.isHovered ? 1 : 0)
+                                border.color: rowItem.isSelected
+                                    ? root.selectionBorderColor
+                                    : Qt.alpha(Config.surface1Color, 0.18)
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: 1
+                                radius: 17
+                                visible: rowItem.isSelected
+                                color: Qt.rgba(0.82, 0.89, 1.0, 0.05)
+                            }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 16
+                                anchors.rightMargin: 16
+                                spacing: 14
+
+                                Item {
+                                    Layout.preferredWidth: 42
+                                    Layout.preferredHeight: 42
+
+                                    Image {
+                                        anchors.fill: parent
+                                        visible: !rowItem.isAction
+                                        asynchronous: true
+                                        source: {
+                                            const icon = rowItem.modelData?.iconName ?? "";
+                                            return icon ? "image://icon/" + icon : "image://icon/application-x-executable";
+                                        }
+                                        sourceSize: Qt.size(64, 64)
+                                        fillMode: Image.PreserveAspectFit
+                                        smooth: true
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        visible: rowItem.isAction
+                                        text: rowItem.modelData?.iconGlyph ?? "󰀻"
+                                        font.family: Config.font
+                                        font.pixelSize: 30
+                                        color: Config.textColor
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: root.highlightedLabel(rowItem.modelData?.name ?? "")
+                                        textFormat: Text.StyledText
+                                        color: Config.textColor
+                                        font.family: Config.font
+                                        font.pixelSize: Config.fontSizeNormal
+                                        font.weight: rowItem.isSelected ? Font.Medium : Font.Normal
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: root.highlightedLabel(rowItem.modelData?.subtitle ?? "")
+                                        textFormat: Text.StyledText
+                                        color: Qt.alpha(Config.textColor, 0.64)
+                                        font.family: Config.font
+                                        font.pixelSize: Config.fontSizeSmall
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    radius: 12
+                                    color: Qt.alpha(Config.textColor, 0.10)
+                                    visible: rowItem.canPin && rowItem.isPinned
+                                    implicitWidth: pinRow.implicitWidth + 12
+                                    implicitHeight: 24
+
+                                    Row {
+                                        id: pinRow
+                                        anchors.centerIn: parent
+                                        spacing: 4
+
+                                        Text {
+                                            text: "󰐃"
+                                            font.family: Config.font
+                                            font.pixelSize: 11
+                                            color: Config.textColor
+                                        }
+
+                                        Text {
+                                            text: "Pinned"
+                                            font.family: Config.font
+                                            font.pixelSize: Config.fontSizeSmall - 1
+                                            color: Config.textColor
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    radius: 12
+                                    color: Qt.alpha(Config.textColor, 0.08)
+                                    implicitWidth: typeText.implicitWidth + 12
+                                    implicitHeight: 24
+
+                                    Text {
+                                        id: typeText
+                                        anchors.centerIn: parent
+                                        text: root.resultTypeLabel(rowItem.modelData)
+                                        font.family: Config.font
+                                        font.pixelSize: Config.fontSizeSmall - 1
+                                        color: Qt.alpha(Config.textColor, 0.78)
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: rowMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: mouse => {
+                                    if (mouse.button === Qt.RightButton && rowItem.canPin) {
+                                        LauncherService.togglePinned(rowItem.modelData?.id || "");
+                                        return;
+                                    }
+                                    if (rowItem.isSelected) {
+                                        if (rowItem.modelData)
+                                            LauncherService.launch(rowItem.modelData);
+                                    } else {
+                                        LauncherService.selectedIndex = rowItem.index;
+                                    }
+                                }
+                            }
+                        }
+
+                        onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
                         ScrollBar.vertical: ScrollBar {
                             policy: ScrollBar.AsNeeded

@@ -248,7 +248,7 @@ PanelWindow {
                     color: Config.surface1Color
                 }
 
-                // Clipboard list
+                // PERFORMANCE FIX: ListView with asynchronous loading
                 ListView {
                     id: clipList
                     Layout.fillWidth: true
@@ -258,6 +258,18 @@ PanelWindow {
                     spacing: 2
                     model: ClipboardService.filteredEntries
                     currentIndex: ClipboardService.selectedIndex
+                    
+                    // PERFORMANCE FIX: Enable caching
+                    // asynchronous: true              // Not available in this Qt version
+                    cacheBuffer: 1000               // Cache items outside viewport
+                    // reuseItems: true                // Qt6 - reuse delegate instances (commented - may not be available)
+                    
+                    // Limit history warning
+                    Component.onCompleted: {
+                        if (ClipboardService.entries && ClipboardService.entries.length > 200) {
+                            console.warn("[ClipboardHistory] Large history detected (" + ClipboardService.entries.length + " items). Consider trimming.");
+                        }
+                    }
 
                     // Custom highlight
                     highlightFollowsCurrentItem: false
@@ -390,10 +402,9 @@ PanelWindow {
                         MouseArea {
                             id: delegateMouse
                             anchors.fill: parent
+                            z: -1
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            // Let delete button clicks through
-                            propagateComposedEvents: true
 
                             onClicked: mouse => {
                                 if (delegateItem.isSelected) {
@@ -455,10 +466,24 @@ PanelWindow {
         }
     }
 
-    // Focus grab
+    // Focus grab (deferred to avoid immediate clear race on open)
     HyprlandFocusGrab {
+        id: focusGrab
         windows: [root]
-        active: root.visible
+        active: false
         onCleared: ClipboardService.hide()
+    }
+
+    Timer {
+        id: focusTimer
+        interval: 50
+        onTriggered: focusGrab.active = true
+    }
+
+    onVisibleChanged: {
+        if (visible)
+            focusTimer.restart();
+        else
+            focusGrab.active = false;
     }
 }

@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import qs.config
 import qs.services
 
@@ -47,21 +46,8 @@ Item {
     readonly property bool showPopup: wrapper ? wrapper.popup : false
     readonly property string timeStr: wrapper ? wrapper.timeStr : ""
 
-    // Timer progress (0.0 to 1.0) - comes directly from the wrapper
-    readonly property real progress: wrapper ? wrapper.progress : 0.0
-    property real displayedProgress: progress
-
     // Check if paused (hover)
     readonly property bool isPaused: wrapper && wrapper.isPaused
-
-    Behavior on displayedProgress {
-        enabled: root.popupMode && !root.isExiting
-        SmoothedAnimation {
-            velocity: 1.0 / Math.max(0.001, Config.notifTimeout / 1000.0)
-            maximumEasingTime: Config.animDurationShort
-            reversingMode: SmoothedAnimation.Immediate
-        }
-    }
 
     // Filter actions that should not be shown as buttons
     readonly property var visibleActions: {
@@ -132,13 +118,15 @@ Item {
     // VISUAL
     // ========================================================================
 
-    // Container with clipping
+    // Container
     Item {
         id: clippedContainer
         width: parent.width
         height: root.visualHeight
         visible: root.wrapper !== null
-        
+
+        // Remove heavy Ops (Opacity Mask and MSAA) which cause severe lag on multiple notifications
+
         // Apply drag offset with smooth animation
         Behavior on x {
             enabled: !root.isDragging && !root.isDismissing
@@ -147,27 +135,14 @@ Item {
                 easing.type: Easing.OutQuad
             }
         }
-        
+
         x: root.dragOffset
-
-        // Mask for rounded border
-        Rectangle {
-            id: maskRect
-            anchors.fill: parent
-            radius: Config.radiusLarge
-            visible: false
-        }
-
-        layer.enabled: true
-        layer.samples: 4
-        layer.effect: OpacityMask {
-            maskSource: maskRect
-        }
 
         // Background
         Rectangle {
             anchors.fill: parent
             color: Config.backgroundTransparentColor
+            radius: Config.radiusLarge
         }
 
         // Content
@@ -195,28 +170,18 @@ Item {
                         anchors.fill: parent
                         anchors.margins: root.image !== "" ? 0 : 8
                         fillMode: Image.PreserveAspectCrop
-
-                        mipmap: true
-                        antialiasing: true
-                        smooth: true
-                        sourceSize: Qt.size(128, 128)
+                        asynchronous: true
+                        cache: true
+                        mipmap: false
+                        antialiasing: false
+                        smooth: false
+                        sourceSize: Qt.size(64, 64)
 
                         source: NotificationService.getIconSource(root.appIcon, root.image)
 
                         onStatusChanged: {
                             if (status === Image.Error && source !== "") {
                                 source = "image://icon/dialog-information";
-                            }
-                        }
-
-                        // Circular mask for the image
-                        layer.enabled: root.image !== ""
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: notifImage.width
-                                height: notifImage.height
-                                radius: width / 2
-                                visible: false
                             }
                         }
                     }
@@ -321,19 +286,6 @@ Item {
         }
     }
 
-    // Keep the timeout bar outside the masked layer so its width animation
-    // doesn't force the whole popup card to be re-rendered every tick.
-    Rectangle {
-        id: progressBar
-        visible: root.popupMode
-        x: clippedContainer.x
-        y: clippedContainer.height - height
-        width: clippedContainer.width * (1.0 - root.displayedProgress)
-        height: 3
-        radius: height / 2
-        color: root.isUrgent ? Config.errorColor : Config.accentColor
-    }
-
     // Outer border (hover state)
     Rectangle {
         width: parent.width
@@ -382,7 +334,7 @@ Item {
         onReleased: mouse => {
             root.isDragging = false
             NotificationService.clearHovered()
-            
+
             // Check if swipe threshold was crossed
             if (Math.abs(root.dragOffset) > root.dragThreshold) {
                 // Animate out in the direction swiped
@@ -449,7 +401,7 @@ Item {
         property: "dragOffset"
         duration: Config.animDuration
         easing.type: Easing.OutQuad
-        
+
         onFinished: {
             root.isDismissing = false
             root.isCollapsed = true

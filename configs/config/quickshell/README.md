@@ -98,9 +98,7 @@ Puedes editar `data/state/state.json` directamente; el shell detecta los cambios
 
 - `data/state/state.json`: estado general del shell
 - `data/state/ai-history.json`: historial y borradores de Orbit
-- `data/state/assistant/`: estado transitorio del runtime/agente local de Orbit
-- `data/cache/ai-cache.json`: cache local de modelos AI
-- `data/private/secrets.json`: credenciales y secretos locales
+- `data/private/secrets.json`: credenciales y secretos locales, incluyendo acceso opcional a OpenFang
 
 La escritura nueva ocurre siempre en `data/`. Los servicios mantienen fallback de lectura para rutas antiguas durante la transición.
 
@@ -122,11 +120,12 @@ El proyecto sigue dependiendo de algunos artefactos fuera de este árbol:
 | `~/.config/hypr/scripts/tools/AleatoryWall.sh` | `WallpaperManagerService` | Aplicar y rotar wallpapers, sincronizar lockscreen y pywal | El wallpaper no cambia o queda rollback con mensaje visible |
 | `~/.config/hypr/scripts/system/theme-unifier.sh` | `ThemeBackendService` | Aplicar tema GTK/iconos/cursor del sistema | El tema del sistema no se actualiza y se muestra error visible |
 | `~/.lyne-dots/.data/quickshell/defaults.json` | `StateService` | Fallback de valores por defecto | Se usan solo los defaults locales de `Config.qml` y el estado persistido |
+| `http://127.0.0.1:4200` (OpenFang por defecto) | `AiService`, `scripts/ai/ai_chat.py` | Backend único de Orbit: agentes, streaming, sesión y errores | Orbit no puede listar agentes ni chatear hasta recuperar OpenFang |
 | `/tmp/QsAnyModuleIsOpen` | `WindowManagerService`, bluetooth agent | Coordinación ligera entre overlays/agentes | Puede degradarse la coordinación de foco/estado, pero no rompe el shell completo |
 
 ### Ownership interno de scripts
 
-- `scripts/ai/`: backend de Orbit, MCP y utilidades compartidas del asistente.
+- `scripts/ai/`: bridge de Orbit hacia OpenFang.
 - `scripts/agents/`: agentes de soporte runtime ligados a módulos concretos (`bluetooth`, `systemMonitor`).
 - `scripts/tools/`: utilidades auxiliares pequeñas invocadas por servicios del shell.
 

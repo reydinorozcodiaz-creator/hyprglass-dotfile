@@ -82,16 +82,22 @@ vim.api.nvim_create_autocmd("BufReadPost", {
   group = general,
   desc = "Restore cursor position",
   callback = function(args)
-    if vim.bo[args.buf].filetype == "gitcommit" then
-      return
-    end
+    vim.schedule(function()
+      if not vim.api.nvim_buf_is_valid(args.buf) then
+        return
+      end
 
-    local mark = vim.api.nvim_buf_get_mark(args.buf, '"')
-    local line_count = vim.api.nvim_buf_line_count(args.buf)
+      if vim.bo[args.buf].filetype == "gitcommit" then
+        return
+      end
 
-    if mark[1] > 0 and mark[1] <= line_count then
-      pcall(vim.api.nvim_win_set_cursor, 0, mark)
-    end
+      local mark = vim.api.nvim_buf_get_mark(args.buf, '"')
+      local line_count = vim.api.nvim_buf_line_count(args.buf)
+
+      if mark[1] > 0 and mark[1] <= line_count then
+        pcall(vim.api.nvim_win_set_cursor, 0, mark)
+      end
+    end)
   end,
 })
 
@@ -103,5 +109,32 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.opt_local.wrap = true
     vim.opt_local.spell = true
     vim.opt_local.spelllang = "es,en"
+  end,
+})
+
+-- UI Transformation (Project HyprGlass)
+local hyprglass = vim.api.nvim_create_augroup("HyprGlassUI", { clear = true })
+vim.api.nvim_create_autocmd({ "ColorScheme", "VimEnter" }, {
+  group = hyprglass,
+  callback = function()
+    local highlights = {
+      Normal = { bg = "none", ctermbg = "none" },
+      NormalFloat = { bg = "none", ctermbg = "none" },
+      FloatBorder = { fg = "#39BAE6", bg = "none" },
+      Pmenu = { bg = "#0D1017", blend = 10 },
+      PmenuSel = { bg = "#39BAE6", fg = "#0D1017" },
+      LineNr = { fg = "#3E4B59", bg = "none" },
+      CursorLineNr = { fg = "#39BAE6", bg = "none", bold = true },
+      SignColumn = { bg = "none" },
+      FoldColumn = { bg = "none" },
+      StatusLine = { bg = "none" },
+      StatusLineNC = { bg = "none" },
+      WinSeparator = { fg = "#1F2430", bg = "none" },
+      EndOfBuffer = { fg = "#0D1017", bg = "none" },
+    }
+
+    for group, opts in pairs(highlights) do
+      vim.api.nvim_set_hl(0, group, opts)
+    end
   end,
 })

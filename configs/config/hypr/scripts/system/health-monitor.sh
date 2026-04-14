@@ -29,12 +29,20 @@ check_hyprland_health() {
             echo "⚠️  High memory usage detected"
         fi
         
-        # Check essential components
+        # Check essential components and restart if necessary
         for component in quickshell rofi hypridle; do
             if pgrep -x "$component" > /dev/null; then
                 echo "✅ $component: Running"
             else
-                echo "⚠️  $component: Not running"
+                echo "⚠️  $component: Not running - Attempting restart..."
+                case "$component" in
+                    quickshell)
+                        ~/.config/hypr/scripts/start-quickshell.sh > /dev/null 2>&1 &
+                        ;;
+                    hypridle)
+                        hypridle > /dev/null 2>&1 &
+                        ;;
+                esac
             fi
         done
         

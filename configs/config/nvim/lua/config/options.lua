@@ -44,6 +44,21 @@ vim.opt.splitbelow = true
 vim.opt.updatetime = 100         -- faster CursorHold (LSP hover, etc.)
 vim.opt.timeoutlen = 300
 
+-- Layout & UI (Project HyprGlass)
+vim.opt.cmdheight = 0            -- hide command line when not used
+vim.opt.laststatus = 3           -- global statusline (single bar at the bottom)
+vim.opt.showmode = false         -- hide mode (lualine handles it)
+vim.opt.showcmd = false          -- hide showing commands
+vim.opt.shortmess:append("scI")  -- hide startup screen and extra info
+vim.opt.fillchars = {
+  eob = " ",                     -- hide ~ at end of buffer
+  vert = " ",                    -- vertical split separator
+  horiz = " ",                   -- horizontal split separator
+  diff = " ",
+  msgsep = " ",                  -- hide message separator
+  fold = " ",
+}
+
 -- Misc
 vim.opt.wrap = false             -- no line wrap (VS Code default)
 vim.opt.swapfile = false
@@ -56,3 +71,20 @@ vim.opt.conceallevel = 0
 -- i-ci-ve: ver25 (vertical bar) cursor with blinking
 -- r-cr-o: hor20 (horizontal underline) cursor with blinking
 vim.opt.guicursor = "n-v-c-sm:block-blinkwait700-blinkon400-blinkoff250,i-ci-ve:ver25-blinkwait700-blinkon400-blinkoff250,r-cr-o:hor20-blinkwait700-blinkon400-blinkoff250"
+
+-- Nightly: silence specific noisy deprecation warnings
+local suppressed_deprecations = {
+  ["client.is_stopped"] = true,
+  ["vim.highlight"] = true,
+  ["vim.str_utfindex"] = true,
+  ["vim.validate"] = true,
+}
+
+local original_deprecate = vim.deprecate
+vim.deprecate = function(name, alternative, version, ...)
+  if suppressed_deprecations[name] or (name and name:find("vim.validate")) then
+    return
+  end
+  return original_deprecate(name, alternative, version, ...)
+end
+

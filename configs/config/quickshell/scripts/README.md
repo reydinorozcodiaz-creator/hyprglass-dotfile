@@ -2,7 +2,7 @@
 
 ## Ownership
 
-- `ai/`: backend de Orbit, integración MCP, auth y utilidades compartidas del asistente.
+- `ai/`: bridge fino entre Orbit y OpenFang. No contiene providers locales ni runtime agéntico propio.
 - `agents/`: procesos runtime de apoyo para módulos del shell.
 - `tools/`: utilidades pequeñas invocadas por servicios concretos.
 
@@ -18,7 +18,4 @@
   Lo usa `ClipboardService` y depende de `data/state/state.json`.
 
 - `ai/ai_chat.py`
-  Backend principal de Orbit. Expone comandos JSON por stdin/stdout y no debe escribir texto arbitrario fuera de ese contrato.
-
-- `ai/ai_agent_runtime.py`
-  Runtime local de herramientas del asistente. Su estado transitorio vive en `data/state/assistant/`.
+  Bridge principal de Orbit. Expone comandos JSON por stdin/stdout y traduce la GUI a la API HTTP de OpenFang.

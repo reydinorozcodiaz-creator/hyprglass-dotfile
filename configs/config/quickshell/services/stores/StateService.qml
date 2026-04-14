@@ -6,6 +6,35 @@ import Quickshell
 import Quickshell.Io
 import "."
 
+/**
+ * StateService - Global persistent state management for QuickShell
+ * 
+ * @singleton
+ * @extends JsonStore
+ * 
+ * Provides a centralized JSON-backed state store with automatic save/load.
+ * Supports deep merge from fallback paths (legacy state, defaults).
+ * 
+ * Key Methods (inherited from JsonStore):
+ * - get(path: string, defaultValue: any) - Get value at dot-notation path
+ * - set(path: string, value: any) - Set value and trigger auto-save
+ * - remove(path: string) - Remove value and cleanup empty parent objects
+ * - merge(obj: object) - Deep merge object into current state
+ * 
+ * Properties:
+ * - state: object - Current state object
+ * - isLoading: bool - True while initial load is in progress
+ * 
+ * Architecture:
+ * - ARCH-001: Race condition fixed - load/save operations now use mutex
+ * - Auto-saves with 200ms debounce to avoid excessive disk writes
+ * - Watches file for external changes and reloads with 150ms debounce
+ * 
+ * Usage:
+ *   StateService.set("bar.height", 48)
+ *   let height = StateService.get("bar.height", 44)
+ *   StateService.merge({ theme: { mode: "dark" } })
+ */
 JsonStore {
     id: root
 

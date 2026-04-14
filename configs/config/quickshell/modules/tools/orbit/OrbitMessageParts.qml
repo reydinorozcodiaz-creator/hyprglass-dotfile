@@ -72,7 +72,7 @@ Column {
                     font.family: Config.font
                     font.pixelSize: Config.fontSizeSmall
                     color: Config.textColor
-                    wrapMode: Text.Wrap
+                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                     lineHeight: 1.6
                     onLinkActivated: url => root.openLink(url)
                 }
@@ -98,7 +98,7 @@ Column {
                         font.family: Config.font
                         font.pixelSize: Config.fontSizeSmall
                         color: Config.subtextColor
-                        wrapMode: Text.Wrap
+                        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                         lineHeight: 1.6
                         onLinkActivated: url => root.openLink(url)
                     }
@@ -115,7 +115,7 @@ Column {
                     Repeater {
                         model: partItem.modelData.items || []
 
-                        delegate: Row {
+                        delegate: RowLayout {
                             required property var modelData
                             required property int index
 
@@ -123,6 +123,7 @@ Column {
                             spacing: 8
 
                             Text {
+                                Layout.alignment: Qt.AlignTop
                                 text: partItem.modelData.type === "ordered_list"
                                     ? (index + 1) + "."
                                     : "•"
@@ -132,13 +133,13 @@ Column {
                             }
 
                             Text {
-                                width: parent.width - 20
+                                Layout.fillWidth: true
                                 textFormat: Text.RichText
                                 text: root.richText(modelData)
                                 font.family: Config.font
                                 font.pixelSize: Config.fontSizeSmall
                                 color: Config.textColor
-                                wrapMode: Text.Wrap
+                                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                                 lineHeight: 1.55
                                 onLinkActivated: url => root.openLink(url)
                             }
@@ -326,7 +327,7 @@ Column {
                             font.family: "monospace"
                             font.pixelSize: Config.fontSizeSmall - 1
                             color: Config.textColor
-                            wrapMode: Text.Wrap
+                            wrapMode: Text.WrapAnywhere
                             lineHeight: 1.45
                             textFormat: Text.PlainText
                         }
@@ -377,7 +378,7 @@ Column {
                             font.family: Config.font
                             font.pixelSize: 10
                             color: Config.subtextColor
-                            wrapMode: Text.Wrap
+                            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                             opacity: 0.82
                         }
 
@@ -393,7 +394,7 @@ Column {
                             font.family: Config.font
                             font.pixelSize: 10
                             color: Config.subtextColor
-                            wrapMode: Text.Wrap
+                            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                             opacity: 0.82
                         }
 
@@ -463,7 +464,7 @@ Column {
                                                 font.pixelSize: 10
                                                 font.bold: true
                                                 color: Config.textColor
-                                                wrapMode: Text.Wrap
+                                                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                                             }
 
                                             Text {
@@ -473,7 +474,7 @@ Column {
                                                 font.family: Config.font
                                                 font.pixelSize: 10
                                                 color: Config.subtextColor
-                                                wrapMode: Text.Wrap
+                                                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                                                 maximumLineCount: 2
                                                 elide: Text.ElideRight
                                             }

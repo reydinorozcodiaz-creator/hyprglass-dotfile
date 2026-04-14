@@ -123,7 +123,9 @@ Singleton {
     }
 
     function connect(ssid, password) {
-        console.log("Attempting to connect to:", ssid);
+        // SECURITY FIX: Hash SSID before logging to avoid exposing location info
+        const hashedSsid = Qt.md5(ssid).substring(0, 8);
+        console.log("[Network] Attempting to connect to network [" + hashedSsid + "]");
         root.connectingSsid = ssid; // Mark which one we are trying
 
         if (password && password.length > 0) {
@@ -136,7 +138,9 @@ Singleton {
     }
 
     function forget(ssid) {
-        console.log("Forgetting network: " + ssid);
+        // SECURITY FIX: Hash SSID before logging
+        const hashedSsid = Qt.md5(ssid).substring(0, 8);
+        console.log("[Network] Forgetting network [" + hashedSsid + "]");
         forgetProc.command = ["nmcli", "connection", "delete", "id", ssid];
         forgetProc.running = true;
     }
@@ -176,6 +180,8 @@ Singleton {
 
             // Reset state and update lists
             root.connectingSsid = "";
+            findInterfaceProc.running = true;
+            statusProc.running = true;
             getSavedProc.running = true;
             getNetworksProc.running = true;
         }

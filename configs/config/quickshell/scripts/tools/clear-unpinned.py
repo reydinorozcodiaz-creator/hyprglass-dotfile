@@ -4,7 +4,9 @@ import os
 import subprocess
 import sys
 
-STATE_FILE = os.path.expanduser("~/.config/quickshell/data/state/state.json")
+# XDG Base Directory compliance
+XDG_DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))
+STATE_FILE = os.path.join(XDG_DATA_HOME, "quickshell", "state", "state.json")
 
 def load_pinned():
     try:

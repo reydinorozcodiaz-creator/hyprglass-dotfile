@@ -29,6 +29,7 @@ return {
           "vim",
           "vimdoc",
           "yaml",
+          "hyprlang",
         },
         sync_install = false,
         auto_install = false,

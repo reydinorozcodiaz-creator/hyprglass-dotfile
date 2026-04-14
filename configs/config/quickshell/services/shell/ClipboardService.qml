@@ -49,10 +49,12 @@ Singleton {
     // ========================================================================
 
     function show() {
+        console.log("[ClipboardService] show() called");
         refresh();
         query = "";
         selectedIndex = 0;
         visible = true;
+        console.log("[ClipboardService] visible set to:", visible);
     }
 
     function hide() {
@@ -62,6 +64,7 @@ Singleton {
     }
 
     function toggle() {
+        console.log("[ClipboardService] toggle() called, current visible:", visible);
         if (visible) hide();
         else show();
     }

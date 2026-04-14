@@ -23,7 +23,7 @@ PanelWindow {
 
     readonly property int screenMargin: 5
 
-    WlrLayershell.namespace: moduleName !== "" ? "qs_" + moduleName.toLowerCase() : "qs_popup"
+    WlrLayershell.namespace: "qs_modules"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
     WlrLayershell.exclusiveZone: -1
@@ -66,11 +66,16 @@ PanelWindow {
         }
     }
 
+    property bool closeOnFocusLost: true
+
     HyprlandFocusGrab {
         id: focusGrab
         windows: [root]
         active: false
-        onCleared: root.closeWindow()
+        onCleared: {
+            if (root.closeOnFocusLost)
+                root.closeWindow();
+        }
     }
 
     Timer {

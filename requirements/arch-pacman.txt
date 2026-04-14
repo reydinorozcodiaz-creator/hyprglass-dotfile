@@ -26,11 +26,9 @@ matugen
 cliphist
 
 # Bar, Launcher, Notifications
-waybar
+quickshell
 rofi-wayland
 fuzzel
-dunst
-swaync
 
 # Utilities (System)
 udiskie

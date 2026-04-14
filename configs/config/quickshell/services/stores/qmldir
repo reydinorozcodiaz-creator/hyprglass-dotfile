@@ -2,4 +2,3 @@ JsonStore 1.0 JsonStore.qml
 singleton StateService 1.0 StateService.qml
 singleton SecretsService 1.0 SecretsService.qml
 singleton AiHistoryService 1.0 AiHistoryService.qml
-singleton AiCacheService 1.0 AiCacheService.qml

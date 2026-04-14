@@ -32,6 +32,7 @@ Singleton {
 
     readonly property string scriptPath: Quickshell.env("HOME") + "/.config/hypr/scripts/tools/AleatoryWall.sh"
     readonly property string currentWallFile: Quickshell.env("HOME") + "/.config/hypr/logs/.current-wallpaper"
+    property string currentWallWatchPath: ""
 
     // ========================================================================
     // ESTADO PÚBLICO
@@ -55,7 +56,8 @@ Singleton {
     // ========================================================================
 
     Component.onCompleted: {
-        _readCurrentWall.running = true;
+        root.currentWallpaper = StateService.get("wallpaper.current", "");
+        _probeCurrentWallFile.running = true;
     }
 
     // Sincronizar pywalEnabled cuando StateService recarga
@@ -72,7 +74,7 @@ Singleton {
     // Quickshell se entera automáticamente sin polling.
     FileView {
         id: _wallWatcher
-        path: root.currentWallFile
+        path: root.currentWallWatchPath
         watchChanges: true
         onFileChanged: _readCurrentWall.running = true
     }
@@ -144,12 +146,24 @@ Singleton {
     // ========================================================================
 
     Process {
+        id: _probeCurrentWallFile
+        command: ["test", "-f", root.currentWallFile]
+
+        onExited: exitCode => {
+            const exists = exitCode === 0;
+            root.currentWallWatchPath = exists ? root.currentWallFile : "";
+            if (exists)
+                _readCurrentWall.running = true;
+        }
+    }
+
+    Process {
         id: _applyProc
 
         onExited: (exitCode) => {
             root.busy = false;
             if (exitCode === 0) {
-                _readCurrentWall.running = true;
+                _probeCurrentWallFile.running = true;
                 console.log("[WallpaperManager] apply() completado");
                 root.applyFinished(true, root.pendingWallpaper, root.previousWallpaper, "");
             } else {
@@ -167,7 +181,7 @@ Singleton {
         onExited: (exitCode) => {
             root.busy = false;
             if (exitCode === 0)
-                _readCurrentWall.running = true;
+                _probeCurrentWallFile.running = true;
             else
                 console.error("[WallpaperManager] AleatoryWall --once falló, código:", exitCode);
         }

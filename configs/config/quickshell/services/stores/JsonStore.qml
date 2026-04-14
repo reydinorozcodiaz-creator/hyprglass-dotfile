@@ -19,6 +19,7 @@ Item {
     property var state: ({})
     property bool isLoading: true
     property bool _savePending: false
+    property bool _isSaving: false
 
     signal stateLoaded
 
@@ -36,7 +37,7 @@ Item {
         id: reloadDebounce
         interval: 150
         onTriggered: {
-            if (!loadProc.running)
+            if (!loadProc.running && !root._isSaving)
                 root.loadState();
         }
     }
@@ -136,6 +137,11 @@ Item {
     }
 
     function loadState() {
+        if (_isSaving) {
+            console.log("[" + logPrefix + "] Deferred load: save in progress");
+            reloadDebounce.restart();
+            return;
+        }
         isLoading = true;
         loadProc.command = ["bash", "-c", _buildLoadCommand()];
         loadProc.running = true;
@@ -156,6 +162,7 @@ Item {
             return;
         }
         _savePending = false;
+        _isSaving = true;
         const jsonStr = JSON.stringify(state, null, 2);
         const baseCommand = secureWrite
             ? "umask 077 && mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1.tmp\" && chmod 600 \"$1.tmp\" && mv \"$1.tmp\" \"$1\""
@@ -193,6 +200,7 @@ Item {
     Process {
         id: saveProc
         onExited: {
+            root._isSaving = false;
             if (root._savePending)
                 saveDebounce.restart();
         }

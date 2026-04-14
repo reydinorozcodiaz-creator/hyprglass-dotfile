@@ -13,11 +13,16 @@ Singleton {
         return StateService.get(path, fallback);
     }
 
+    function getStringState(path, fallback) {
+        const value = String(getState(path, fallback) || "").trim();
+        return value || fallback;
+    }
+
     // ========================================================================
     // PALETTE (from ThemeService — defined in .data/themes/<name>.json)
     // ========================================================================
     readonly property color backgroundColor: ThemeService.color("background", "#1a1b26")
-    readonly property real backgroundOpacity: getState("opacity.background", 0.9)
+    readonly property real backgroundOpacity: getState("opacity.background", 0.7)
     readonly property color backgroundTransparentColor: Qt.alpha(backgroundColor, backgroundOpacity)
     
     // Opacidad para módulos/popups (menor para mostrar mejor el blur)
@@ -67,7 +72,7 @@ Singleton {
     // ========================================================================
     // TYPOGRAPHY
     // ========================================================================
-    readonly property string font: getState("typography.font", "Caskaydia Cove Nerd Font")
+    readonly property string font: getStringState("typography.font", "Caskaydia Cove Nerd Font")
 
     readonly property int fontSizeSmall: getState("typography.sizeSmall", 12)
     readonly property int fontSizeNormal: getState("typography.sizeNormal", 14)

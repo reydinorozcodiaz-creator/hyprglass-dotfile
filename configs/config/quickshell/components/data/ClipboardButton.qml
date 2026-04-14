@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import qs.components
 import qs.config
 import qs.services
@@ -37,10 +36,6 @@ BarButton {
             }
         }
     }
-
-    ToolTip.visible: root.hovered
-    ToolTip.text: "Clipboard History"
-    ToolTip.delay: 500
 
     SequentialAnimation {
         id: pulseAnimation
